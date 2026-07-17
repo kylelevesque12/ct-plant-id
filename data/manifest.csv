@@ -1,0 +1,19 @@
+observation_id,taxon_id,species,path,license_code,split
+60998626,82358,Chimaphila maculata,data/images/chimaphila_maculata/60998626_0.jpg,,val
+35712039,82358,Chimaphila maculata,data/images/chimaphila_maculata/35712039_0.jpg,,train
+98407791,82358,Chimaphila maculata,data/images/chimaphila_maculata/98407791_0.jpg,,train
+28647125,82358,Chimaphila maculata,data/images/chimaphila_maculata/28647125_0.jpg,cc-by-nc,train
+227372006,82358,Chimaphila maculata,data/images/chimaphila_maculata/227372006_0.jpg,cc-by,train
+248132905,82358,Chimaphila maculata,data/images/chimaphila_maculata/248132905_0.jpg,cc-by-nc,train
+46139781,56061,Alliaria petiolata,data/images/alliaria_petiolata/46139781_0.jpg,cc-by-nc,test
+11313203,56061,Alliaria petiolata,data/images/alliaria_petiolata/11313203_0.jpg,,train
+272317447,56061,Alliaria petiolata,data/images/alliaria_petiolata/272317447_0.jpg,,train
+112501156,56061,Alliaria petiolata,data/images/alliaria_petiolata/112501156_0.jpg,cc-by-nc,test
+281510041,56061,Alliaria petiolata,data/images/alliaria_petiolata/281510041_0.jpg,cc-by-nc,train
+44303506,56061,Alliaria petiolata,data/images/alliaria_petiolata/44303506_0.jpg,,train
+340780742,48961,Symplocarpus foetidus,data/images/symplocarpus_foetidus/340780742_0.jpg,cc-by-nc,train
+77968219,48961,Symplocarpus foetidus,data/images/symplocarpus_foetidus/77968219_0.jpg,cc-by-nc,train
+108838620,48961,Symplocarpus foetidus,data/images/symplocarpus_foetidus/108838620_0.jpg,cc-by,train
+176691456,48961,Symplocarpus foetidus,data/images/symplocarpus_foetidus/176691456_0.jpg,cc-by-nc,train
+269647818,48961,Symplocarpus foetidus,data/images/symplocarpus_foetidus/269647818_0.jpg,cc-by-nc,train
+102315079,48961,Symplocarpus foetidus,data/images/symplocarpus_foetidus/102315079_0.jpg,cc-by,train

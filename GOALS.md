@@ -86,23 +86,35 @@ invasive species list.
 
 ## Queue
 
-- [ ] **Comprehensive CT species checklist + data pipeline.** Assemble the
-  FULL list of vascular plant species recorded in Connecticut from GBIF
-  occurrence data, cross-checked against a state flora reference — the whole
-  ~2,000–2,500, this is the permanent target the pipeline serves. Store it
-  with taxonomy (species/genus/family) so hierarchical fallback is possible
-  later. Build a reproducible script that pulls research-grade iNaturalist
-  images for every species with data, cleans them, and writes train/val/test
-  splits keyed so no observation straddles splits. The pipeline must handle
-  the full checklist; the first training run may start from the well-sampled
-  head, but the data layer is built for all of it from day one. Produce a
-  data card showing total class count, the head/mid/tail distribution of
-  image counts per species, and an explicit list of species currently
-  deferred for insufficient data (a backlog to close, not a scope cut).
-  Verification: script rebuilds the dataset from scratch; tests assert
-  observation-level split integrity, that the class list matches the full
-  checklist, and that the head/mid/tail tiers are computed and recorded;
-  data card committed. (Software goal.)
+- [ ] **Scoped dataset build + data card.** With the pipeline proven (see
+  Done: recon + observation-keyed downloader), commit to the v1 training
+  scope and build it. **Recommended v1 scope, from the recon** (docs/
+  data_recon.md): species with ≥ 20 iNaturalist observations — the ~976
+  head+mid species that hold 97.2% of all CT plant observations, i.e. ~97%
+  of real field encounters — with a per-species image cap (~300) to bound
+  size and curb head imbalance. This is the near-term "functionally good"
+  slice, explicitly a waypoint toward comprehensive, NOT the final scope.
+  Deliver: the downloaded dataset — via the **iNaturalist Open Data set on
+  AWS** (`s3://inaturalist-open-data`: photos/observations/taxa CSVs) or the
+  GBIF media export, NOT an API scrape (iNat asks callers not to bulk-pull
+  the API; the `download_images.py` path is for small/incremental use only),
+  keeping the observation-keyed split; a **data card** (docs/) recording
+  class count, head/mid/tail distribution, images-per-species stats,
+  per-photo license status, and the ~1,566 deferred tail species; plus a
+  GBIF/state-flora cross-check for species with occurrence records but no
+  research-grade iNat photos. Verification: `scripts/data_integrity.py`
+  passes on the built set (paths exist, no observation straddles splits,
+  species ⊆ checklist); the data card's numbers reproduce from a script; all
+  tests green; Codex SHIP. (Software goal — gate: data_integrity.)
+
+  **Prepared (2026-07-16), download deferred to cloud:** `build_scope.py`
+  wrote the committed v1 scope (`data/v1_species.csv`, 976 species,
+  97.2% obs coverage); `make_data_card.py` wrote the projected card
+  (`docs/data_card.md`, filled from the recon, with per-photo-license and
+  actual-image stats marked TODO-after-build). What remains and why it's not
+  auto-run here: the multi-GB Open Data bulk download belongs on the cloud
+  box, needs the scope committed (cutoff/cap), and is a large file download
+  (not something to kick off autonomously). Resume this goal there.
 
 - [ ] **Baseline long-tail classifier (cloud training).** Fine-tune an
   iNaturalist-pretrained backbone (EfficientNetV2 / ConvNeXt / ViT via timm)
@@ -185,4 +197,15 @@ invasive species list.
 
 ## Done
 
-(completed goals move here with the date)
+- [x] **Data pipeline + CT flora reconnaissance** (2026-07-16). Built and
+  smoke-tested the reproducible data layer that the scoped build now uses:
+  `scripts/fetch_ct_checklist.py` (pulled the real CT checklist from the
+  iNaturalist API — 2,542 research-grade species, distribution written to
+  docs/data_recon.md), `ctplantid/splits.py` (deterministic, hash-based,
+  observation-keyed split — stable as data grows, 4 tests incl. the
+  no-straddle leakage invariant), `scripts/download_images.py`
+  (observation-keyed image downloader → data/images + data/manifest.csv,
+  smoke-tested on 3 species), and `scripts/data_integrity.py` +
+  `scripts/goal_check.sh` (the Stop-hook data gate: re-checks no-leakage on
+  the real downloaded data). Recon finding that set the v1 scope: the ~976
+  head+mid species cover ~97% of field encounters. 11 tests green.
