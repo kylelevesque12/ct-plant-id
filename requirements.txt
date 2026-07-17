@@ -1,0 +1,16 @@
+# Core ML (training happens on cloud GPU; these also run CPU/MPS locally)
+torch
+torchvision
+timm            # pretrained backbones, incl. iNaturalist-pretrained checkpoints
+
+# Data pipeline
+requests
+pandas
+pillow
+
+# App (server + PWA), mirrors the landscaping stack
+fastapi
+uvicorn[standard]
+
+# Dev
+pytest

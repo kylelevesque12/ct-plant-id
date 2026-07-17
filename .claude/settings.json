@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_goal.sh\"",
+            "timeout": 1200,
+            "statusMessage": "Verifying goal (pytest + metric gate + Codex)…"
+          }
+        ]
+      }
+    ]
+  }
+}

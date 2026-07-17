@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+data/            # raw images, splits — large, reproducible from scripts
+models/          # checkpoints
+reports/         # eval outputs
+*.pt
+*.pth
+.pytest_cache/
+.DS_Store
+.claude/current-goal.md
+.claude/goal-iterations
+.claude/goal-stalled.md
