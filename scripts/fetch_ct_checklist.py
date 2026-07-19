@@ -84,9 +84,9 @@ def main():
     counts = {r["name"]: r["obs_count"] for r in rows}
     summary = sp.tier_summary(counts)
     total = len(rows)
-    print(f"\n=== Connecticut plant checklist ===")
+    print("\n=== Connecticut plant checklist ===")
     print(f"species (research-grade): {total}")
-    print(f"tier split (by obs count, proxy for image availability):")
+    print("tier split (by obs count, proxy for image availability):")
     for tier in ("head", "mid", "tail"):
         n = summary.get(tier, 0)
         pct = 100 * n / total if total else 0
