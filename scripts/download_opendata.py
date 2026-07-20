@@ -28,7 +28,7 @@ import gzip
 import hashlib
 import io
 import os
-import time
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
@@ -111,34 +111,44 @@ def select_photos(selected_obs, ct_taxa, cap, max_scan):
     return photos
 
 
-def download_photos(photos):
+def _fetch_one(p):
+    """Download one photo if not already on disk; return its manifest row, or
+    None on failure. Safe to run concurrently. Resumable: a photo already on
+    disk is kept (row still returned) and not re-fetched — so re-running after
+    an interrupted download only pulls what's missing."""
+    dest = os.path.join(IMG_DIR, slug(p["species"]))
+    os.makedirs(dest, exist_ok=True)
+    path = os.path.join(dest, f"{p['observation_uuid']}_0.{p['ext']}")
+    if not os.path.exists(path):
+        try:
+            url = PHOTO_URL.format(photo_id=p["photo_id"], ext=p["ext"])
+            b = requests.get(url, timeout=60).content
+            with open(path, "wb") as img:
+                img.write(b)
+        except Exception:
+            return None
+    return {"observation_uuid": p["observation_uuid"], "taxon_id": p["taxon_id"],
+            "species": p["species"], "path": os.path.relpath(path, ROOT),
+            "license": p["license"], "split": split_for(p["observation_uuid"])}
+
+
+def download_photos(photos, workers):
+    """Parallel, resumable photo download. `workers` concurrent fetches; the
+    manifest is written from the main thread (single writer, no lock needed)."""
     os.makedirs(IMG_DIR, exist_ok=True)
+    saved, total = 0, len(photos)
+    chunk = 4000  # bound the number of in-flight futures / memory
     with open(MANIFEST, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["observation_uuid", "taxon_id",
                            "species", "path", "license", "split"])
         w.writeheader()
-        saved = 0
-        for p in photos:
-            dest = os.path.join(IMG_DIR, slug(p["species"]))
-            os.makedirs(dest, exist_ok=True)
-            path = os.path.join(dest, f"{p['observation_uuid']}_0.{p['ext']}")
-            if not os.path.exists(path):
-                try:
-                    url = PHOTO_URL.format(photo_id=p["photo_id"], ext=p["ext"])
-                    b = requests.get(url, timeout=60).content
-                    with open(path, "wb") as img:
-                        img.write(b)
-                    time.sleep(0.05)
-                except Exception:
-                    continue
-            w.writerow({"observation_uuid": p["observation_uuid"],
-                        "taxon_id": p["taxon_id"], "species": p["species"],
-                        "path": os.path.relpath(path, ROOT),
-                        "license": p["license"],
-                        "split": split_for(p["observation_uuid"])})
-            saved += 1
-            if saved % 1000 == 0:
-                print(f"  downloaded {saved:,}")
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for i in range(0, total, chunk):
+                for row in ex.map(_fetch_one, photos[i:i + chunk]):
+                    if row:
+                        w.writerow(row)
+                        saved += 1
+                print(f"  downloaded {saved:,}/{total:,}")
     return saved
 
 
@@ -152,8 +162,8 @@ def main(args):
     photos = select_photos(obs, ct_taxa, args.cap, args.max_scan)
     print(f"  {len(photos):,} photos to fetch across "
           f"{len(set(p['taxon_id'] for p in photos))} species")
-    print("pass 3: downloading photos…")
-    n = download_photos(photos)
+    print(f"pass 3: downloading photos with {args.workers} workers…")
+    n = download_photos(photos, args.workers)
     print(f"done: {n:,} photos -> {os.path.relpath(MANIFEST, ROOT)}")
 
 
@@ -162,4 +172,6 @@ if __name__ == "__main__":
     ap.add_argument("--cap", type=int, default=300, help="max photos per species")
     ap.add_argument("--max-scan", type=int, default=0,
                     help="stop scanning each metadata file after N rows (testing)")
+    ap.add_argument("--workers", type=int, default=16,
+                    help="concurrent photo downloads (16 is a good default)")
     main(ap.parse_args())

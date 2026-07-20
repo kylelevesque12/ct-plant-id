@@ -27,6 +27,7 @@ import argparse
 import csv
 import json
 import os
+import time
 from collections import Counter, defaultdict
 
 import timm
@@ -122,6 +123,13 @@ def run(args):
 
     model = timm.create_model(args.backbone, pretrained=True,
                               num_classes=len(classes)).to(dev)
+    # Stage 2 of progressive resizing: start from a lower-res run's weights
+    # (weights only — fresh optimizer/schedule for the new resolution).
+    if args.init_from:
+        ck = torch.load(args.init_from, map_location=dev, weights_only=False)
+        model.load_state_dict(ck["state_dict"])
+        print(f"initialized from {args.init_from} "
+              f"(trained at {ck['data_config']['input_size'][1]}px)")
     cfg = timm.data.resolve_model_data_config(model)
     cfg["input_size"] = (3, args.img_size, args.img_size)
     train_tf = timm.data.create_transform(**cfg, is_training=True,
@@ -149,11 +157,53 @@ def run(args):
             if id(p) not in head_ids:
                 p.requires_grad = not frozen
 
+    # --- benchmark: measure before committing to an expensive run ---
+    if args.benchmark:
+        model.train()
+        warmup, seen, t0 = 3, 0, None
+        for i, (x, y) in enumerate(train_dl):
+            x, y = x.to(dev), y.to(dev)
+            opt.zero_grad()
+            with torch.autocast(device_type="cuda", enabled=use_amp):
+                loss = loss_fn(model(x), y)
+            scaler.scale(loss).backward()
+            scaler.step(opt)
+            scaler.update()
+            if i + 1 == warmup:          # start timing after warmup batches
+                t0, seen = time.time(), 0
+            elif t0 is not None:
+                seen += len(x)
+            if i + 1 >= args.benchmark + warmup:
+                break
+        dt = time.time() - t0
+        ips = seen / dt
+        epoch_s = len(tr) / ips
+        total_h = epoch_s * args.epochs / 3600
+        print(f"\n=== benchmark ({args.backbone} @ {args.img_size}px) ===")
+        print(f"measured: {ips:,.0f} images/sec")
+        print(f"1 epoch over {len(tr):,} images: {epoch_s/60:.1f} min")
+        print(f"{args.epochs} epochs: {total_h:.1f} hours"
+              f"  ≈ ${total_h * args.gpu_cost:.2f} at ${args.gpu_cost:.2f}/hr")
+        print("(no training saved — this was a measurement run)")
+        return
+
     log = {"config": vars(args), "backbone": args.backbone,
            "n_classes": len(classes), "epochs": []}
     best_val, best_state, since = -1.0, None, 0
+    start_ep = 0
 
-    for ep in range(args.epochs):
+    # --- resume: pick up from the last completed epoch ---
+    last_path = os.path.join(args.out, "last.pt")
+    if args.resume and os.path.exists(last_path):
+        ck = torch.load(last_path, map_location=dev, weights_only=False)
+        model.load_state_dict(ck["state_dict"])
+        opt.load_state_dict(ck["optimizer"])
+        start_ep, best_val = ck["epoch"] + 1, ck.get("best_val", -1.0)
+        for _ in range(start_ep):
+            sched.step()
+        print(f"resumed from epoch {start_ep} (best val so far {best_val:.1%})")
+
+    for ep in range(start_ep, args.epochs):
         set_backbone_frozen(ep < args.freeze_epochs)
         model.train()
         tot = 0.0
@@ -184,6 +234,10 @@ def run(args):
         log["epochs"].append(rec)
         print(msg)
         json.dump(log, open(os.path.join(args.out, "run.json"), "w"), indent=2)
+        # Checkpoint EVERY epoch so a crash costs one epoch, not the whole run.
+        torch.save({"state_dict": model.state_dict(), "optimizer": opt.state_dict(),
+                    "epoch": ep, "best_val": best_val, "classes": classes,
+                    "data_config": cfg, "backbone": args.backbone}, last_path)
         if val_dl and since >= args.patience:
             print(f"early stop: no val improvement for {args.patience} epochs")
             break
@@ -219,4 +273,12 @@ if __name__ == "__main__":
     ap.add_argument("--weight-decay", type=float, default=1e-2)
     ap.add_argument("--freeze-epochs", type=int, default=1, help="warm up head first")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--benchmark", type=int, default=0,
+                    help="time N batches, project hours+cost, then exit")
+    ap.add_argument("--gpu-cost", type=float, default=1.50,
+                    help="$/hr, for the benchmark's cost projection")
+    ap.add_argument("--resume", action="store_true",
+                    help="continue from <out>/last.pt")
+    ap.add_argument("--init-from", default="",
+                    help="start from another run's weights (stage-2 fine-tune)")
     run(ap.parse_known_args()[0])
