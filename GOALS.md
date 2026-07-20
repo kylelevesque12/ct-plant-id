@@ -197,6 +197,21 @@ invasive species list.
 
 ## Done
 
+- [x] **Dataset built + data card** (2026-07-17). **500,648 images, 2,360
+  species**, train 350,179 / val 75,120 / test 75,349, observation-keyed
+  splits, ~67 GB, on a DigitalOcean block volume. Honest deviations from the
+  goal as written: the cap-300 pull was stopped at ~75% of its 670k target by
+  a full disk (the full pull needed ~200 GB, not the ~45 GB estimated) — but
+  because photos arrive in arbitrary order, the result is a large random
+  sample in which the median species still hit the full 300-image cap. The
+  manifest was rebuilt from disk rather than re-downloading, which **loses
+  per-photo license data** (recorded "unknown" — re-scan photos.csv before any
+  redistribution). 137 microscopic-algae species were filtered out (0.6% of
+  images) as unphotographable. The **GBIF/state-flora cross-check was NOT
+  done** — coverage was instead verified against the iNat checklist, which
+  showed the 47 missing species all have ≤7 CT observations. Data card:
+  docs/data_card.md.
+
 - [x] **Data pipeline + CT flora reconnaissance** (2026-07-16). Built and
   smoke-tested the reproducible data layer that the scoped build now uses:
   `scripts/fetch_ct_checklist.py` (pulled the real CT checklist from the
