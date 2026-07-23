@@ -1,0 +1,84 @@
+{
+  "config": {
+    "data": "/home/ubuntu/data",
+    "out": "runs/stage2",
+    "backbone": "tf_efficientnetv2_s.in21k_ft_in1k",
+    "img_size": 384,
+    "limit_species": 0,
+    "epochs": 6,
+    "patience": 5,
+    "batch": 32,
+    "lr": 0.0002,
+    "head_lr": 0.002,
+    "weight_decay": 0.01,
+    "freeze_epochs": 1,
+    "workers": 4,
+    "benchmark": 0,
+    "gpu_cost": 1.5,
+    "resume": false,
+    "init_from": "runs/stage1/model.pt"
+  },
+  "backbone": "tf_efficientnetv2_s.in21k_ft_in1k",
+  "n_classes": 2360,
+  "epochs": [
+    {
+      "epoch": 1,
+      "train_loss": 2.019,
+      "val": {
+        "top1": 0.7493,
+        "top5": 0.9119,
+        "genus": 0.8461
+      }
+    },
+    {
+      "epoch": 2,
+      "train_loss": 2.0279,
+      "val": {
+        "top1": 0.7244,
+        "top5": 0.9009,
+        "genus": 0.8249
+      }
+    },
+    {
+      "epoch": 3,
+      "train_loss": 1.9308,
+      "val": {
+        "top1": 0.7407,
+        "top5": 0.9096,
+        "genus": 0.8373
+      }
+    },
+    {
+      "epoch": 4,
+      "train_loss": 1.8044,
+      "val": {
+        "top1": 0.7642,
+        "top5": 0.9183,
+        "genus": 0.8555
+      }
+    },
+    {
+      "epoch": 5,
+      "train_loss": 1.694,
+      "val": {
+        "top1": 0.7816,
+        "top5": 0.9293,
+        "genus": 0.8681
+      }
+    },
+    {
+      "epoch": 6,
+      "train_loss": 1.6301,
+      "val": {
+        "top1": 0.7927,
+        "top5": 0.9333,
+        "genus": 0.8758
+      }
+    }
+  ],
+  "final_test": {
+    "top1": 0.7945,
+    "top5": 0.9318,
+    "genus": 0.8779
+  }
+}

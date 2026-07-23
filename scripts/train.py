@@ -27,6 +27,7 @@ import argparse
 import csv
 import json
 import os
+import random
 import time
 from collections import Counter, defaultdict
 
@@ -64,14 +65,26 @@ class PlantSet(Dataset):
     def __len__(self):
         return len(self.rows)
 
-    def __getitem__(self, i):
-        r = self.rows[i]
+    def _path(self, r):
         path = r["path"]
-        if not os.path.isabs(path):
-            path = os.path.join(self.data_dir, os.path.relpath(path, "data")) \
-                if path.startswith("data" + os.sep) else os.path.join(self.data_dir, path)
-        img = Image.open(path).convert("RGB")
-        return self.tf(img), r["label"]
+        if os.path.isabs(path):
+            return path
+        if path.startswith("data" + os.sep):
+            return os.path.join(self.data_dir, os.path.relpath(path, "data"))
+        return os.path.join(self.data_dir, path)
+
+    def __getitem__(self, i):
+        # A handful of images are truncated (the download died on a full disk).
+        # verify_images.py removes them up front; this is a backstop so one bad
+        # file can't kill a multi-hour run — substitute another sample instead.
+        for _ in range(10):
+            r = self.rows[i]
+            try:
+                img = Image.open(self._path(r)).convert("RGB")
+                return self.tf(img), r["label"]
+            except Exception:
+                i = random.randrange(len(self.rows))
+        raise RuntimeError("too many unreadable images — run verify_images.py")
 
 
 def balanced_sampler(rows, n_classes):
