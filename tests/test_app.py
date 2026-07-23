@@ -1,0 +1,142 @@
+"""Offline, deterministic tests for the CT Plant ID FastAPI app.
+
+No real model load (the fake in conftest replaces PlantModel) and no network.
+Tests assert the documented response SHAPES and the not_sure behavior, driven by
+the fake model's known outputs.
+"""
+import importlib
+import io
+
+import pytest
+from PIL import Image
+
+from tests.conftest import FakePlantModel
+
+REQUIRED_CANDIDATE_KEYS = {"species", "common_name", "prob", "status", "is_weed"}
+
+
+def _jpeg_bytes(color=(34, 139, 34), size=(16, 16)):
+    """A tiny in-memory RGB JPEG — enough for the decode path, no disk, no net."""
+    buf = io.BytesIO()
+    Image.new("RGB", size, color).save(buf, format="JPEG")
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def test_health_reports_ok_and_species_count(client):
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    # Species count mirrors the fake model's class list length (5).
+    assert body["species"] == len(FakePlantModel.classes)
+    assert isinstance(body["species"], int)
+
+
+def test_identify_returns_documented_shape(client):
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    # Top-level shape.
+    assert isinstance(body["top_species"], str)
+    assert isinstance(body["not_sure"], bool)
+    assert isinstance(body["candidates"], list)
+
+    # k=5 candidates (fake has 5 classes).
+    candidates = body["candidates"]
+    assert len(candidates) == 5
+
+    # Every candidate carries all required keys with sane types.
+    for c in candidates:
+        assert REQUIRED_CANDIDATE_KEYS.issubset(c.keys())
+        assert isinstance(c["species"], str)
+        assert isinstance(c["prob"], float)
+        assert isinstance(c["status"], str)
+        assert isinstance(c["is_weed"], bool)
+        assert c["common_name"] is None or isinstance(c["common_name"], str)
+
+    # Probabilities are sorted descending.
+    probs = [c["prob"] for c in candidates]
+    assert probs == sorted(probs, reverse=True)
+
+    # top_species matches the leading candidate.
+    assert body["top_species"] == candidates[0]["species"]
+
+
+def test_not_sure_false_when_confident(client):
+    # Default fake probs put top-1 at 0.85, above the 0.30 threshold.
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["not_sure"] is False
+
+
+def test_not_sure_true_when_low_confidence(client):
+    # Dial the top-1 prob below the 0.30 threshold; the fake reads this live.
+    FakePlantModel.probs = [0.18, 0.15, 0.12, 0.10, 0.08]
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["not_sure"] is True
+    # Candidates still come back for the ambiguous case.
+    assert len(body["candidates"]) == 5
+
+
+def test_garbage_upload_is_4xx_not_500(client):
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("junk.jpg", b"this is not an image", "image/jpeg")},
+    )
+    assert 400 <= resp.status_code < 500, resp.status_code
+    assert resp.status_code != 500
+
+
+def test_empty_upload_is_4xx_not_500(client):
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("empty.jpg", b"", "image/jpeg")},
+    )
+    assert 400 <= resp.status_code < 500, resp.status_code
+
+
+def test_missing_image_field_is_422(client):
+    # No multipart file at all -> FastAPI validation error, never a 500.
+    resp = client.post("/api/identify")
+    assert resp.status_code == 422
+
+
+# --- attributes.annotate(), only if that module has landed ------------------
+# importorskip is called INSIDE each test (function scope) so a missing
+# attributes.py skips only these three tests, not the whole module.
+
+
+def test_annotate_always_returns_three_keys():
+    attributes = pytest.importorskip("app.attributes")
+    result = attributes.annotate("Acer rubrum")
+    assert set(result.keys()) == {"common_name", "status", "is_weed"}
+
+
+def test_annotate_invasive_species():
+    attributes = pytest.importorskip("app.attributes")
+    # Multiflora rose is a well-known CT invasive/weed.
+    result = attributes.annotate("Rosa multiflora")
+    assert result["status"] == "invasive"
+    assert result["is_weed"] is True
+
+
+def test_annotate_unknown_species_safe_defaults():
+    attributes = pytest.importorskip("app.attributes")
+    # A typo / unheard-of binomial must not raise and must fall back safely.
+    result = attributes.annotate("Zzyzx nonexistus")
+    assert set(result.keys()) == {"common_name", "status", "is_weed"}
+    assert result["status"] in {"native", "introduced", "invasive", "unknown"}
+    assert isinstance(result["is_weed"], bool)

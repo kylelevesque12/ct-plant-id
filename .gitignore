@@ -1,9 +1,15 @@
 .venv/
 __pycache__/
 *.pyc
-data/            # raw images, splits — large, reproducible from scripts
-models/          # checkpoints
-reports/         # eval outputs
+# Large / reproducible data is ignored, but keep the small app lookup tables
+# the running app needs. Note: comments must be on their own line — an inline
+# comment becomes part of the pattern and silently breaks the ignore.
+data/*
+!data/attributes.csv
+!data/common_names.csv
+models/
+reports/
+runs/
 *.pt
 *.pth
 .pytest_cache/

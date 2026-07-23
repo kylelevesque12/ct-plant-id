@@ -1,0 +1,449 @@
+/* ===========================================================================
+   Fieldnote — CT Plant ID
+   Calm, botanical, phone-first. A field-guide feel: serif for the plant
+   names, quiet sans for the interface, one considered forest-green accent.
+   Semantic status colors (native / introduced / invasive / unknown) are kept
+   deliberately separate from the accent so a red invasive-weed flag reads at
+   a glance.
+   =========================================================================== */
+
+:root {
+  /* Warm paper ground with a faint green bias — chosen, not default grey. */
+  --bg:        #f4f1e9;
+  --bg-tint:   #ece7db;
+  --surface:   #ffffff;
+  --surface-2: #faf8f2;
+  --ink:       #1c2b22;
+  --ink-soft:  #3a4a40;
+  --muted:     #64756a;
+  --faint:     #8a998f;
+  --line:      #e2ddd0;
+  --line-soft: #ebe6da;
+
+  /* One accent: forest green. */
+  --accent:      #2f7d52;
+  --accent-deep: #24603f;
+  --accent-soft: #e4f0e7;
+  --on-accent:   #ffffff;
+
+  /* Semantic status — independent of the accent. */
+  --native:     #2e7d4f;  --native-bg:     #e3f1e6;  --native-ink:     #1d5636;
+  --introduced: #a9700f;  --introduced-bg: #f6ecd6;  --introduced-ink: #7a4f08;
+  --invasive:   #c0392b;  --invasive-bg:   #fbe4e0;  --invasive-ink:   #8f261b;
+  --unknown:    #6b7280;  --unknown-bg:    #ecedef;  --unknown-ink:    #4a5058;
+
+  --radius:    18px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+  --shadow:    0 1px 2px rgba(28,43,34,.05), 0 8px 24px -12px rgba(28,43,34,.18);
+  --shadow-lg: 0 2px 4px rgba(28,43,34,.06), 0 20px 44px -18px rgba(28,43,34,.30);
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  --sans:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --maxw: 460px;
+  --pad: clamp(16px, 5vw, 24px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #12160f;
+    --bg-tint:   #191e15;
+    --surface:   #1b2118;
+    --surface-2: #212819;
+    --ink:       #edf1e7;
+    --ink-soft:  #cdd6c8;
+    --muted:     #97a596;
+    --faint:     #6f7d6f;
+    --line:      #2c3428;
+    --line-soft: #262d22;
+
+    --accent:      #58b37f;
+    --accent-deep: #79c99a;
+    --accent-soft: #1e2e24;
+    --on-accent:   #0c1a12;
+
+    --native:     #5fbf85;  --native-bg:     #172c1f;  --native-ink:     #9bdcb3;
+    --introduced: #d6a344;  --introduced-bg: #302713;  --introduced-ink: #e7c583;
+    --invasive:   #e8756a;  --invasive-bg:   #35191a;  --invasive-ink:   #f4a49b;
+    --unknown:    #9aa2ac;  --unknown-bg:    #23282b;  --unknown-ink:    #c1c7cd;
+
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 26px -14px rgba(0,0,0,.7);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 24px 50px -20px rgba(0,0,0,.8);
+  }
+}
+
+/* Explicit theme toggles must win over the media query, both directions. */
+:root[data-theme="light"] {
+  --bg:#f4f1e9; --bg-tint:#ece7db; --surface:#ffffff; --surface-2:#faf8f2;
+  --ink:#1c2b22; --ink-soft:#3a4a40; --muted:#64756a; --faint:#8a998f;
+  --line:#e2ddd0; --line-soft:#ebe6da;
+  --accent:#2f7d52; --accent-deep:#24603f; --accent-soft:#e4f0e7; --on-accent:#ffffff;
+  --native:#2e7d4f; --native-bg:#e3f1e6; --native-ink:#1d5636;
+  --introduced:#a9700f; --introduced-bg:#f6ecd6; --introduced-ink:#7a4f08;
+  --invasive:#c0392b; --invasive-bg:#fbe4e0; --invasive-ink:#8f261b;
+  --unknown:#6b7280; --unknown-bg:#ecedef; --unknown-ink:#4a5058;
+  --shadow:0 1px 2px rgba(28,43,34,.05),0 8px 24px -12px rgba(28,43,34,.18);
+  --shadow-lg:0 2px 4px rgba(28,43,34,.06),0 20px 44px -18px rgba(28,43,34,.30);
+}
+:root[data-theme="dark"] {
+  --bg:#12160f; --bg-tint:#191e15; --surface:#1b2118; --surface-2:#212819;
+  --ink:#edf1e7; --ink-soft:#cdd6c8; --muted:#97a596; --faint:#6f7d6f;
+  --line:#2c3428; --line-soft:#262d22;
+  --accent:#58b37f; --accent-deep:#79c99a; --accent-soft:#1e2e24; --on-accent:#0c1a12;
+  --native:#5fbf85; --native-bg:#172c1f; --native-ink:#9bdcb3;
+  --introduced:#d6a344; --introduced-bg:#302713; --introduced-ink:#e7c583;
+  --invasive:#e8756a; --invasive-bg:#35191a; --invasive-ink:#f4a49b;
+  --unknown:#9aa2ac; --unknown-bg:#23282b; --unknown-ink:#c1c7cd;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px -14px rgba(0,0,0,.7);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.5),0 24px 50px -20px rgba(0,0,0,.8);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* The hidden attribute must beat component display rules (.banner{display:flex}
+   etc.), so JS toggling .hidden reliably shows/hides. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+/* Keep the file input in the render tree (so a <label for> reliably opens the
+   picker on iOS Safari) while hiding it visually. */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Subtle organic ground: two soft radial washes, fixed. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(120% 60% at 85% -5%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+    radial-gradient(90% 50% at -10% 105%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 55%);
+  pointer-events: none;
+}
+
+.skip-link {
+  position: absolute; left: 50%; top: -60px; transform: translateX(-50%);
+  background: var(--accent); color: var(--on-accent); padding: 10px 16px;
+  border-radius: var(--radius-pill); z-index: 20; transition: top .18s ease;
+  text-decoration: none; font-weight: 600; font-size: .9rem;
+}
+.skip-link:focus { top: 10px; }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) var(--pad) 12px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mark {
+  display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 11px;
+  background: var(--accent-soft); color: var(--accent);
+  flex: none;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.brand-name { font-family: var(--serif); font-weight: 600; font-size: 1.16rem; letter-spacing: .01em; }
+.brand-sub { font-size: .72rem; color: var(--muted); letter-spacing: .02em; }
+
+.health {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 11px; border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--line);
+  font-size: .74rem; color: var(--muted); font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.health-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--faint);
+  box-shadow: 0 0 0 0 transparent;
+}
+.health.ok    .health-dot { background: var(--native); box-shadow: 0 0 0 3px color-mix(in srgb, var(--native) 22%, transparent); }
+.health.down  .health-dot { background: var(--invasive); }
+.health.ok    .health-label { color: var(--ink-soft); }
+
+/* ---------- Layout ---------- */
+main {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: clamp(20px, 6vw, 34px) var(--pad) 8px;
+  flex: 1 0 auto;
+}
+.view { animation: rise .4s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Hero / start ---------- */
+.hero { text-align: center; margin-bottom: 26px; }
+.hero-title {
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(1.7rem, 7.5vw, 2.15rem); line-height: 1.12;
+  margin: 0 0 10px; letter-spacing: -.01em; text-wrap: balance; color: var(--ink);
+}
+.hero-lede {
+  margin: 0 auto; max-width: 34ch; color: var(--muted);
+  font-size: .98rem; text-wrap: pretty;
+}
+
+.capture-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; width: 100%; min-height: 116px;
+  padding: 20px; margin: 0 0 14px;
+  border: none; border-radius: var(--radius);
+  background: linear-gradient(160deg, var(--accent), var(--accent-deep));
+  color: var(--on-accent);
+  cursor: pointer; text-align: center;
+  box-shadow: var(--shadow-lg);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
+}
+.capture-btn:hover { filter: brightness(1.04); }
+.capture-btn:active { transform: scale(.985); box-shadow: var(--shadow); }
+.capture-btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, #fff); outline-offset: 3px; }
+.capture-icon { margin-bottom: 4px; }
+.capture-label { font-family: var(--serif); font-size: 1.28rem; font-weight: 600; }
+.capture-hint { font-size: .82rem; opacity: .85; }
+.capture-btn-again { min-height: 66px; flex-direction: row; gap: 10px; margin-top: 24px; }
+.capture-btn-again .capture-icon { margin: 0; }
+.capture-btn-again .capture-label { font-size: 1.12rem; }
+
+.ghost-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 48px; padding: 12px 18px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink-soft);
+  font-family: var(--sans); font-size: .95rem; font-weight: 550;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+}
+.ghost-btn:hover { background: var(--surface-2); border-color: var(--muted); }
+.ghost-btn:active { transform: scale(.99); }
+.ghost-btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+
+.tips {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 10px;
+  list-style: none; padding: 0; margin: 26px 0 0;
+}
+.tips li {
+  font-size: .8rem; color: var(--muted);
+  padding: 6px 12px; border-radius: var(--radius-pill);
+  background: var(--surface); border: 1px solid var(--line-soft);
+}
+
+/* ---------- Preview & loading ---------- */
+.preview {
+  position: relative; margin: 0 0 18px; overflow: hidden;
+  border-radius: var(--radius); background: var(--bg-tint);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+  aspect-ratio: 4 / 3;
+}
+.preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.preview-sm { aspect-ratio: 16 / 9; margin-bottom: 16px; }
+
+.scanline {
+  position: absolute; left: 0; right: 0; top: 0; height: 42%;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 42%, transparent) 78%, color-mix(in srgb, var(--accent) 70%, transparent));
+  box-shadow: 0 2px 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: scan 1.9s ease-in-out infinite;
+}
+@keyframes scan {
+  0%   { transform: translateY(-105%); opacity: 0; }
+  25%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { transform: translateY(240%); opacity: 0; }
+}
+
+.busy-status {
+  display: flex; align-items: center; justify-content: center; gap: 11px;
+  font-size: 1.02rem; color: var(--ink-soft); font-weight: 550;
+  margin: 8px 0 18px;
+}
+.spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2.5px solid var(--line);
+  border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Not-sure banner ---------- */
+.banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px; margin: 0 0 16px;
+  border-radius: var(--radius-sm);
+  background: var(--introduced-bg);
+  border: 1px solid color-mix(in srgb, var(--introduced) 40%, transparent);
+  color: var(--introduced-ink);
+}
+.banner svg { flex: none; margin-top: 1px; color: var(--introduced); }
+.banner strong { display: block; font-size: .95rem; }
+.banner span { display: block; font-size: .86rem; color: color-mix(in srgb, var(--introduced-ink) 82%, var(--ink)); margin-top: 2px; }
+
+/* ---------- Top (winning) candidate ---------- */
+.top-card {
+  position: relative; overflow: hidden;
+  padding: 20px; margin: 0 0 22px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+}
+.top-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+  background: var(--rail, var(--accent));
+}
+.top-rank {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .72rem; font-weight: 650; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 8px;
+}
+.top-rank .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.top-name {
+  font-family: var(--serif); font-weight: 600;
+  font-size: clamp(1.5rem, 6.5vw, 1.95rem); line-height: 1.1;
+  letter-spacing: -.01em; margin: 0; color: var(--ink); text-wrap: balance;
+}
+.top-latin {
+  font-family: var(--serif); font-style: italic;
+  font-size: 1rem; color: var(--muted); margin: 3px 0 0;
+}
+.top-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+
+.confidence { margin-top: 16px; }
+.confidence-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.confidence-label { font-size: .78rem; color: var(--muted); letter-spacing: .02em; }
+.confidence-val { font-size: .92rem; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+.meter {
+  height: 9px; border-radius: var(--radius-pill);
+  background: var(--bg-tint); overflow: hidden;
+}
+.meter-fill {
+  height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+  width: 0; transition: width .7s cubic-bezier(.2,.7,.3,1);
+}
+.meter-fill.low  { background: linear-gradient(90deg, var(--introduced), color-mix(in srgb, var(--introduced) 70%, #000)); }
+
+/* ---------- Ranked list 2..5 ---------- */
+.list-heading {
+  font-size: .78rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--faint); margin: 0 0 10px 2px;
+}
+.candidates { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.cand {
+  display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 12px;
+  padding: 13px 15px; border-radius: var(--radius-sm);
+  background: var(--surface); border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.cand-rank {
+  font-family: var(--serif); font-size: 1.05rem; font-weight: 600;
+  color: var(--faint); text-align: center; font-variant-numeric: tabular-nums;
+}
+.cand-body { min-width: 0; }
+.cand-name {
+  font-family: var(--serif); font-weight: 600; font-size: 1.06rem;
+  color: var(--ink); line-height: 1.2; overflow-wrap: anywhere;
+  /* wrap to at most two lines instead of truncating "Spotted Deadnettle" -> "Spotted Dead..." */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.cand-latin {
+  font-family: var(--serif); font-style: italic; font-size: .84rem; color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.cand-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.cand-prob {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.cand-prob b { color: var(--ink-soft); font-weight: 650; }
+.mini-meter { width: 46px; height: 5px; border-radius: 99px; background: var(--bg-tint); overflow: hidden; flex: none; }
+.mini-meter i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.cand-right { display: flex; align-items: center; }
+
+/* ---------- Status badges ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: var(--radius-pill);
+  font-size: .74rem; font-weight: 650; letter-spacing: .01em;
+  white-space: nowrap; line-height: 1.35;
+  border: 1px solid transparent;
+}
+.badge .glyph { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.badge-sm { font-size: .68rem; padding: 3px 8px; }
+
+.badge.native     { background: var(--native-bg);     color: var(--native-ink);     border-color: color-mix(in srgb, var(--native) 30%, transparent); }
+.badge.introduced { background: var(--introduced-bg); color: var(--introduced-ink); border-color: color-mix(in srgb, var(--introduced) 32%, transparent); }
+.badge.unknown    { background: var(--unknown-bg);    color: var(--unknown-ink);    border-color: color-mix(in srgb, var(--unknown) 28%, transparent); }
+
+/* Invasive / weed — the loud one. Filled, with a warning icon. */
+.badge.invasive, .badge.weed {
+  background: var(--invasive); color: #fff;
+  border-color: color-mix(in srgb, var(--invasive) 70%, #000);
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--invasive) 40%, transparent);
+}
+.badge.invasive .glyph, .badge.weed .glyph { background: #fff; }
+.badge.invasive svg, .badge.weed svg { flex: none; }
+
+.disclaimer {
+  font-size: .8rem; color: var(--faint); text-align: center;
+  margin: 20px auto 0; max-width: 40ch; line-height: 1.45;
+}
+
+/* ---------- Error ---------- */
+.error-card {
+  text-align: center; padding: 32px 22px;
+  border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--line); box-shadow: var(--shadow-lg);
+  color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.error-card svg { color: var(--invasive); margin-bottom: 6px; }
+.error-card h2 { font-family: var(--serif); font-size: 1.3rem; font-weight: 600; margin: 0; }
+.error-card p { color: var(--muted); margin: 0 0 6px; max-width: 30ch; font-size: .95rem; }
+.error-card .capture-btn-again { max-width: 220px; }
+
+/* ---------- Footer ---------- */
+.foot {
+  text-align: center; padding: 20px var(--pad) max(20px, env(safe-area-inset-bottom));
+  color: var(--faint); font-size: .76rem; letter-spacing: .02em;
+  flex-shrink: 0;
+}
+
+/* ---------- Motion preference ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  .scanline { display: none; }
+  .spinner { border-top-color: var(--accent); }
+}
+
+/* Wider screens: a calm centered column, never full-bleed. */
+@media (min-width: 620px) {
+  main { padding-top: 40px; }
+  .capture-btn { min-height: 132px; }
+}

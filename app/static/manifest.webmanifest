@@ -1,0 +1,20 @@
+{
+  "name": "Fieldnote — CT Plant ID",
+  "short_name": "Fieldnote",
+  "description": "Photograph a plant and identify Connecticut species, with an honest native, introduced, or invasive-weed flag.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f1e9",
+  "theme_color": "#2f7d52",
+  "categories": ["education", "utilities", "lifestyle"],
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
