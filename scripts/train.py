@@ -36,6 +36,7 @@ import torch
 import torch.nn as nn
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+import torchvision.transforms as T
 
 DEFAULT_BACKBONE = "tf_efficientnetv2_s.in21k_ft_in1k"  # 21k-pretrained; swap freely
 
@@ -140,13 +141,33 @@ def run(args):
     # (weights only — fresh optimizer/schedule for the new resolution).
     if args.init_from:
         ck = torch.load(args.init_from, map_location=dev, weights_only=False)
-        model.load_state_dict(ck["state_dict"])
+        # Load only shape-matching params. Same-class runs load everything; when
+        # the class set changed (Workstream B added ornamentals) the classifier
+        # head shape differs, so those params are skipped and stay freshly
+        # initialized — warm-starting the CT-tuned BACKBONE, fresh head.
+        msd = model.state_dict()
+        compat = {k: v for k, v in ck["state_dict"].items()
+                  if k in msd and v.shape == msd[k].shape}
+        model.load_state_dict(compat, strict=False)
+        reinit = len(msd) - len(compat)
         print(f"initialized from {args.init_from} "
-              f"(trained at {ck['data_config']['input_size'][1]}px)")
+              f"(trained at {ck['data_config']['input_size'][1]}px); "
+              f"loaded {len(compat)}/{len(msd)} params"
+              + (f", {reinit} reinit for new class set" if reinit else ""))
     cfg = timm.data.resolve_model_data_config(model)
     cfg["input_size"] = (3, args.img_size, args.img_size)
     train_tf = timm.data.create_transform(**cfg, is_training=True,
                                           auto_augment="rand-m7-mstd0.5")
+    # Robustness augs for the phone-vs-iNat gap (Workstream B): RandAugment already
+    # covers color/rotate/shear but NOT defocus blur or perspective — the exact
+    # variance that flipped the hydrangea across three angles. Prepend them at the
+    # PIL level (before timm's crop/normalize). Disable with --no-robust-aug.
+    if not args.no_robust_aug:
+        train_tf = T.Compose([
+            T.RandomApply([T.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0))], p=0.30),
+            T.RandomPerspective(distortion_scale=0.20, p=0.30),
+            train_tf,
+        ])
     eval_tf = timm.data.create_transform(**cfg, is_training=False)
 
     train_dl = DataLoader(PlantSet(tr, args.data, train_tf), batch_size=args.batch,
@@ -160,7 +181,7 @@ def run(args):
     opt = torch.optim.AdamW(param_groups(model, args.lr, args.head_lr),
                             weight_decay=args.weight_decay)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
-    loss_fn = nn.CrossEntropyLoss(label_smoothing=0.1)
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
     # optional: freeze the backbone for the first --freeze-epochs (warm up head)
@@ -284,6 +305,11 @@ if __name__ == "__main__":
     ap.add_argument("--lr", type=float, default=2e-4, help="backbone LR")
     ap.add_argument("--head-lr", type=float, default=2e-3, help="classifier head LR")
     ap.add_argument("--weight-decay", type=float, default=1e-2)
+    ap.add_argument("--label-smoothing", type=float, default=0.05,
+                    help="0.1 caused underconfidence (we fixed it post-hoc via "
+                         "temperature scaling); 0.05 is gentler. Re-fit temp after.")
+    ap.add_argument("--no-robust-aug", action="store_true",
+                    help="disable the blur/perspective robustness augmentations")
     ap.add_argument("--freeze-epochs", type=int, default=1, help="warm up head first")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--benchmark", type=int, default=0,
