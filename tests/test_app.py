@@ -116,6 +116,26 @@ def test_identify_includes_confidence_label(client):
     assert label in {"Strong match", "Likely match", "Possible match", "Uncertain"}
 
 
+def test_show_status_true_on_confident_match(client):
+    # "Likely" (>=0.60) or "Strong" -> we trust the ID enough to show its status.
+    FakePlantModel.probs = [0.75, 0.05, 0.04, 0.03, 0.02]
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.json()["show_status"] is True
+
+
+def test_show_status_false_on_weak_match(client):
+    # "Possible"/"Uncertain" -> hide the native/invasive/weed flag (safety).
+    FakePlantModel.probs = [0.45, 0.20, 0.15, 0.10, 0.05]
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.json()["show_status"] is False
+
+
 def test_garbage_upload_is_4xx_not_500(client):
     resp = client.post(
         "/api/identify",

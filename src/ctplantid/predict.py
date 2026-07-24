@@ -15,6 +15,7 @@ import os
 
 import timm
 import torch
+from PIL import ImageOps
 
 
 class PlantModel:
@@ -37,18 +38,31 @@ class PlantModel:
         if os.path.exists(sidecar):
             self.temperature = float(json.load(open(sidecar)).get("temperature", 1.0))
 
+    def _tensor(self, pil_image):
+        """PIL -> preprocessed input tensor. Applies EXIF orientation FIRST so a
+        phone photo isn't fed sideways (PIL.open doesn't auto-rotate); idempotent
+        when the caller already transposed. Single source of truth for preprocessing."""
+        img = ImageOps.exif_transpose(pil_image).convert("RGB")
+        return self.tf(img).unsqueeze(0).to(self.device)
+
     @torch.no_grad()
     def logits(self, pil_image):
         """Raw (uncalibrated) logit vector for one image — used to fit T."""
-        x = self.tf(pil_image.convert("RGB")).unsqueeze(0).to(self.device)
-        return self.model(x)[0].cpu()
+        return self.model(self._tensor(pil_image))[0].cpu()
+
+    @torch.no_grad()
+    def features(self, pil_image):
+        """Penultimate (pre-logit) embedding for OOD scoring — distance in this
+        feature space separates 'far from any trained plant' from 'hard plant'."""
+        x = self._tensor(pil_image)
+        f = self.model.forward_head(self.model.forward_features(x), pre_logits=True)
+        return f[0].cpu()
 
     @torch.no_grad()
     def predict(self, pil_image, k=5):
         """Return [{"species", "prob"}, ...] top-k. Probabilities are
         temperature-calibrated when a temperature.json is present."""
-        x = self.tf(pil_image.convert("RGB")).unsqueeze(0).to(self.device)
-        probs = (self.model(x)[0] / self.temperature).softmax(dim=0)
+        probs = (self.model(self._tensor(pil_image))[0] / self.temperature).softmax(dim=0)
         top = probs.topk(min(k, len(self.classes)))
         return [{"species": self.classes[i], "prob": float(p)}
                 for p, i in zip(top.values.cpu(), top.indices.cpu())]

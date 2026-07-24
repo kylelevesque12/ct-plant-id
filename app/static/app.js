@@ -144,7 +144,18 @@
     if (nm.secondary) topCard.appendChild(el("p", "top-latin", nm.secondary));
 
     var badges = el("div", "top-badges");
-    badges.appendChild(makeBadge(top, false));
+    if (data.show_status !== false) {
+      badges.appendChild(makeBadge(top, false));
+    } else {
+      // Safety: hide the native/invasive/WEED flag when we're not confident in
+      // the ID. A wrong "Invasive weed" on an out-of-scope plant (e.g. a garden
+      // hydrangea) could get a real plant pulled — only show status on a
+      // Likely/Strong match. (Reuses the neutral 'unknown' badge styling.)
+      var hb = el("span", "badge unknown");
+      hb.appendChild(el("span", "glyph"));
+      hb.appendChild(document.createTextNode("Status hidden — not confident enough"));
+      badges.appendChild(hb);
+    }
     topCard.appendChild(badges);
 
     // confidence meter

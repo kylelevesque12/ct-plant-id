@@ -15,7 +15,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
 # Hard cap on decoded pixels: a "decompression bomb" is a tiny file with enormous
@@ -100,6 +100,7 @@ class IdentifyResponse(BaseModel):
     top_species: str
     not_sure: bool
     confidence_label: str  # qualitative, honest label for the top match
+    show_status: bool      # gate the native/invasive/weed flag on confidence
     candidates: list[Candidate]
 
 
@@ -148,7 +149,11 @@ async def identify(image: UploadFile = File(...)):
         if probe.width * probe.height > MAX_PIXELS:
             raise HTTPException(status_code=400, detail="image dimensions too large")
         Image.open(io.BytesIO(raw)).verify()   # catches truncated/corrupt files
-        pil = Image.open(io.BytesIO(raw)).convert("RGB")
+        # Honor EXIF orientation: phones record rotation in a tag the browser
+        # preview applies but PIL does NOT on open. Without this the model can be
+        # fed a sideways photo while the user sees it upright — a silent
+        # train/serve mismatch (iNat training photos are already upright).
+        pil = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert("RGB")
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise HTTPException(status_code=400, detail="not a valid image file")
 
@@ -170,9 +175,16 @@ async def identify(image: UploadFile = File(...)):
     if not candidates:  # defensive: predict() always returns 5, so this is never
         raise HTTPException(status_code=422, detail="could not identify the image")
     top = candidates[0]
+    label = confidence_label(top.prob)
+    # Safety gate (Workstream A, first cut): only surface the native/invasive/weed
+    # flag when we're at least reasonably confident in the ID. On a "Possible" or
+    # "Uncertain" top match — e.g. an out-of-scope garden plant landing on a wrong
+    # CT species — a confident "Invasive weed" could get a real plant pulled. Below
+    # "Likely" we hide it. (Proper OOD detection lands in Workstream B.)
     return IdentifyResponse(
         top_species=top.species,
         not_sure=top.prob < NOT_SURE_THRESHOLD,
-        confidence_label=confidence_label(top.prob),
+        confidence_label=label,
+        show_status=label in ("Strong match", "Likely match"),
         candidates=candidates,
     )
