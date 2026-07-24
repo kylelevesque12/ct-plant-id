@@ -96,6 +96,26 @@ def test_not_sure_true_when_low_confidence(client):
     assert len(body["candidates"]) == 5
 
 
+def test_confidence_label_bands(client):
+    # Probabilities are temperature-calibrated, so the label bands read on the
+    # honest number: >=0.80 strong, >=0.60 likely, >=threshold possible, else uncertain.
+    from app import main
+    assert main.confidence_label(0.94) == "Strong match"
+    assert main.confidence_label(0.70) == "Likely match"
+    assert main.confidence_label(main.NOT_SURE_THRESHOLD + 0.05) == "Possible match"
+    assert main.confidence_label(main.NOT_SURE_THRESHOLD - 0.05) == "Uncertain"
+
+
+def test_identify_includes_confidence_label(client):
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.status_code == 200
+    label = resp.json()["confidence_label"]
+    assert label in {"Strong match", "Likely match", "Possible match", "Uncertain"}
+
+
 def test_garbage_upload_is_4xx_not_500(client):
     resp = client.post(
         "/api/identify",

@@ -43,23 +43,24 @@ except Exception:  # module missing or not yet importable
 STATIC_DIR = ROOT / "app" / "static"
 CKPT_PATH = ROOT / "runs" / "stage2" / "model.pt"
 
-# Below this top-1 probability we flag the result as "not sure". Set from the
-# calibration study (scripts/calibrate.py, reports/calibration.json): the model
-# is UNDERconfident (label smoothing) — at a ~25% top guess it's still top-1
-# correct ~79% and top-5 ~93%, so the old 0.30 wrongly flagged good predictions.
-# Accuracy only collapses below ~0.10-0.15, so 0.15 is the honest cutoff.
-# (Temperature scaling to make the displayed % itself meaningful is the next step.)
-NOT_SURE_THRESHOLD = 0.15
+# The model's probabilities are now TEMPERATURE-CALIBRATED in predict.py
+# (scripts/fit_temperature.py fit T=0.6, dropping ECE 0.31 -> 0.05). So the
+# top-1 prob reaching here already means "P(this ID is correct)" — mean
+# confidence 78% vs measured accuracy 77%. That lets us threshold and label
+# directly on the honest number instead of the old underconfident raw softmax.
+#
+# Below this calibrated probability we flag "not sure": a leading guess the
+# model itself rates under ~40% likely to be right deserves the caution banner.
+NOT_SURE_THRESHOLD = 0.40
 
 
-# Qualitative confidence label from the calibration study's accuracy bands
-# (reports/calibration.json). The model is underconfident, so a raw "26%" is
-# misleading — these labels say what the probability ACTUALLY means:
-#   >=0.50 ~ 84-100% top-1 correct, 0.30-0.50 ~ 74-87%, 0.15-0.30 ~ 57-79%.
+# Qualitative label for the calibrated top-1 probability. Because the number now
+# IS the estimated chance of being correct, the bands read literally:
+#   >=0.80 very likely right, 0.60-0.80 probably, 0.40-0.60 leading-but-check.
 def confidence_label(prob: float) -> str:
-    if prob >= 0.50:
+    if prob >= 0.80:
         return "Strong match"
-    if prob >= 0.30:
+    if prob >= 0.60:
         return "Likely match"
     if prob >= NOT_SURE_THRESHOLD:
         return "Possible match"
