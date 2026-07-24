@@ -101,6 +101,7 @@ class IdentifyResponse(BaseModel):
     not_sure: bool
     confidence_label: str  # qualitative, honest label for the top match
     show_status: bool      # gate the native/invasive/weed flag on confidence
+    out_of_scope: bool     # OOD: input is far from every trained class (garden/non-plant)
     candidates: list[Candidate]
 
 
@@ -157,7 +158,8 @@ async def identify(image: UploadFile = File(...)):
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
         raise HTTPException(status_code=400, detail="not a valid image file")
 
-    preds = model.predict(pil, k=5)
+    result = model.identify(pil, k=5)
+    preds = result["candidates"]
 
     candidates = []
     for p in preds:
@@ -176,15 +178,18 @@ async def identify(image: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail="could not identify the image")
     top = candidates[0]
     label = confidence_label(top.prob)
-    # Safety gate (Workstream A, first cut): only surface the native/invasive/weed
-    # flag when we're at least reasonably confident in the ID. On a "Possible" or
-    # "Uncertain" top match — e.g. an out-of-scope garden plant landing on a wrong
-    # CT species — a confident "Invasive weed" could get a real plant pulled. Below
-    # "Likely" we hide it. (Proper OOD detection lands in Workstream B.)
+    out_of_scope = result["out_of_scope"]
+    # Safety gate: only surface the native/invasive/weed flag when we're at least
+    # reasonably confident AND the input is in scope. On a "Possible"/"Uncertain"
+    # match, or an out-of-scope input (garden plant, non-plant) landing on a wrong
+    # CT species, a confident "Invasive weed" could get a real plant pulled — so we
+    # hide it. Feature-distance OOD (out_of_scope) is the Workstream B upgrade that
+    # catches the *confident* out-of-scope case the confidence gate alone can't.
     return IdentifyResponse(
         top_species=top.species,
         not_sure=top.prob < NOT_SURE_THRESHOLD,
         confidence_label=label,
-        show_status=label in ("Strong match", "Likely match"),
+        show_status=(label in ("Strong match", "Likely match")) and not out_of_scope,
+        out_of_scope=out_of_scope,
         candidates=candidates,
     )

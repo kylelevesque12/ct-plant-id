@@ -116,18 +116,35 @@
       return;
     }
 
-    // Not-sure banner
-    notSureBanner.hidden = !data.not_sure;
+    // Caution banner: out-of-scope (OOD) takes priority over low-confidence.
+    var oob = data.out_of_scope === true;
+    if (oob || data.not_sure) {
+      var bStrong = notSureBanner.querySelector("strong");
+      var bSpan = notSureBanner.querySelector("span");
+      if (oob) {
+        bStrong.textContent = "This looks outside my range.";
+        bSpan.textContent = "Maybe a garden ornamental or something I wasn't trained on. The closest Connecticut-wild matches are below — treat them with caution.";
+      } else {
+        bStrong.textContent = "Not confident on this one.";
+        bSpan.textContent = "Here are the closest matches — compare them yourself before deciding.";
+      }
+      notSureBanner.hidden = false;
+    } else {
+      notSureBanner.hidden = true;
+    }
 
     // ---- top card ----
     topCard.innerHTML = "";
     var top = cands[0];
     var topInfo = badgeInfo(top);
-    // Rail color tracks the winner's status so a red edge signals a weed early.
-    var railVar = topInfo.warn ? "var(--invasive)"
-                : topInfo.cls === "native" ? "var(--native)"
-                : topInfo.cls === "introduced" ? "var(--introduced)"
-                : data.not_sure ? "var(--introduced)" : "var(--accent)";
+    // Rail color tracks the winner's status so a red edge signals a weed early —
+    // but only when we're actually showing status (hidden on low-conf/OOD, so the
+    // rail shouldn't flash red there either).
+    var showStatus = data.show_status !== false;
+    var railVar = (showStatus && topInfo.warn) ? "var(--invasive)"
+                : (showStatus && topInfo.cls === "native") ? "var(--native)"
+                : (showStatus && topInfo.cls === "introduced") ? "var(--introduced)"
+                : (oob || data.not_sure) ? "var(--introduced)" : "var(--accent)";
     topCard.style.setProperty("--rail", railVar);
 
     var rank = el("div", "top-rank");
@@ -135,8 +152,11 @@
     // Lead with the honest, calibrated confidence label ("Strong match" /
     // "Likely match" / "Possible match" / "Uncertain") rather than a raw % —
     // the model is underconfident so the number alone understates reliability.
+    // When out-of-scope, don't claim a confidence label ("Strong match" would
+    // contradict "outside my range") — call it the closest match instead.
     rank.appendChild(document.createTextNode(
-      data.confidence_label || (data.not_sure ? "Best guess" : "Most likely match")));
+      oob ? "Closest match"
+          : (data.confidence_label || (data.not_sure ? "Best guess" : "Most likely match"))));
     topCard.appendChild(rank);
 
     var nm = names(top);

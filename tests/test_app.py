@@ -136,6 +136,30 @@ def test_show_status_false_on_weak_match(client):
     assert resp.json()["show_status"] is False
 
 
+def test_out_of_scope_suppresses_status_even_when_confident(client):
+    # The confident-OOD case (e.g. a garden hydrangea landing on a wrong CT
+    # species at high prob): out_of_scope must win and hide the status/weed flag,
+    # which the confidence gate alone can't do.
+    FakePlantModel.out_of_scope = True
+    FakePlantModel.probs = [0.85, 0.07, 0.04, 0.03, 0.01]
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["out_of_scope"] is True
+    assert body["show_status"] is False
+
+
+def test_in_scope_default_reports_out_of_scope_false(client):
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.json()["out_of_scope"] is False
+
+
 def test_garbage_upload_is_4xx_not_500(client):
     resp = client.post(
         "/api/identify",

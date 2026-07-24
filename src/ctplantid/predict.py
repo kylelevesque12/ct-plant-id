@@ -13,6 +13,7 @@ probability actually means "P(this ID is correct)". Default temperature 1.0 = ra
 import json
 import os
 
+import numpy as np
 import timm
 import torch
 from PIL import ImageOps
@@ -33,10 +34,23 @@ class PlantModel:
 
         # Optional calibration temperature fit on held-out data.
         self.temperature = 1.0
-        sidecar = os.path.join(os.path.dirname(os.path.abspath(ckpt_path)),
-                               "temperature.json")
+        ckpt_dir = os.path.dirname(os.path.abspath(ckpt_path))
+        sidecar = os.path.join(ckpt_dir, "temperature.json")
         if os.path.exists(sidecar):
             self.temperature = float(json.load(open(sidecar)).get("temperature", 1.0))
+
+        # Optional OOD bank (scripts/build_ood_bank.py): whitening W + whitened
+        # class means nu + a distance threshold. Lets identify() flag out-of-scope
+        # inputs (garden ornamentals, non-plants) by feature distance. Absent (no
+        # bank yet) => never flags, so this is inert until the bank is built.
+        self.ood = None
+        ood_path = os.path.join(ckpt_dir, "ood_bank.npz")
+        if os.path.exists(ood_path):
+            z = np.load(ood_path, allow_pickle=True)
+            nu = torch.tensor(z["nu"], dtype=torch.float32)
+            self.ood = {"W": torch.tensor(z["whiten"], dtype=torch.float32),
+                        "nu": nu, "nu_sq": (nu * nu).sum(1),
+                        "threshold": float(z["threshold"])}
 
     def _tensor(self, pil_image):
         """PIL -> preprocessed input tensor. Applies EXIF orientation FIRST so a
@@ -57,6 +71,34 @@ class PlantModel:
         x = self._tensor(pil_image)
         f = self.model.forward_head(self.model.forward_features(x), pre_logits=True)
         return f[0].cpu()
+
+    def _ood_score(self, feats):
+        """Min Mahalanobis distance to any class centroid, in whitened space
+        (see scripts/build_ood_bank.py). Larger = further from every trained class."""
+        g = feats @ self.ood["W"].T
+        d2 = (g * g).sum() - 2 * (g @ self.ood["nu"].T) + self.ood["nu_sq"]
+        return float(d2.min())
+
+    @torch.no_grad()
+    def identify(self, pil_image, k=5):
+        """Full result for the app: top-k candidates + an out_of_scope flag, set
+        when an OOD bank is loaded AND the image sits beyond the distance
+        threshold from every class. One backbone forward feeds both the
+        classifier and the OOD feature (which must match the bank's features)."""
+        x = self._tensor(pil_image)
+        fmap = self.model.forward_features(x)
+        logits = self.model.forward_head(fmap, pre_logits=False)[0]
+        probs = (logits / self.temperature).softmax(dim=0)
+        top = probs.topk(min(k, len(self.classes)))
+        cands = [{"species": self.classes[i], "prob": float(p)}
+                 for p, i in zip(top.values.cpu(), top.indices.cpu())]
+        out_of_scope, ood_score = False, None
+        if self.ood is not None:
+            feats = self.model.forward_head(fmap, pre_logits=True)[0].float().cpu()
+            ood_score = self._ood_score(feats)
+            out_of_scope = ood_score > self.ood["threshold"]
+        return {"candidates": cands, "out_of_scope": out_of_scope,
+                "ood_score": ood_score}
 
     @torch.no_grad()
     def predict(self, pil_image, k=5):

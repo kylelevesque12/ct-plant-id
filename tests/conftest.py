@@ -45,8 +45,10 @@ class FakePlantModel:
         "Betula lenta",
     ]
 
-    # Default: a confident top-1 (0.85 > 0.30 threshold => not_sure False).
+    # Default: a confident top-1 (0.85 > threshold => not_sure False).
     probs = [0.85, 0.07, 0.04, 0.03, 0.01]
+    # Default in-scope; a test can set this True to exercise the OOD path.
+    out_of_scope = False
 
     def __init__(self, ckpt_path=None, device=None):
         # Accept the same call signature as the real model but do no work.
@@ -60,6 +62,11 @@ class FakePlantModel:
             for i in range(n)
         ]
 
+    def identify(self, pil_image, k=5):
+        # Mirrors the real model's rich result the app consumes.
+        return {"candidates": self.predict(pil_image, k),
+                "out_of_scope": self.out_of_scope, "ood_score": None}
+
 
 @pytest.fixture
 def client():
@@ -72,6 +79,7 @@ def client():
     from fastapi.testclient import TestClient
 
     FakePlantModel.probs = [0.85, 0.07, 0.04, 0.03, 0.01]
+    FakePlantModel.out_of_scope = False
 
     predict_mod = importlib.import_module("ctplantid.predict")
     real_plantmodel = predict_mod.PlantModel
