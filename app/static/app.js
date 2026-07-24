@@ -132,7 +132,11 @@
 
     var rank = el("div", "top-rank");
     rank.appendChild(el("span", "dot"));
-    rank.appendChild(document.createTextNode(data.not_sure ? "Best guess" : "Most likely match"));
+    // Lead with the honest, calibrated confidence label ("Strong match" /
+    // "Likely match" / "Possible match" / "Uncertain") rather than a raw % —
+    // the model is underconfident so the number alone understates reliability.
+    rank.appendChild(document.createTextNode(
+      data.confidence_label || (data.not_sure ? "Best guess" : "Most likely match")));
     topCard.appendChild(rank);
 
     var nm = names(top);

@@ -68,7 +68,10 @@ def test_identify_returns_documented_shape(client):
 
 
 def test_not_sure_false_when_confident(client):
-    # Default fake probs put top-1 at 0.85, above the 0.30 threshold.
+    # Top-1 comfortably above the threshold -> confident. Reference the actual
+    # threshold so this tracks config changes instead of hardcoding a number.
+    from app import main
+    FakePlantModel.probs = [main.NOT_SURE_THRESHOLD + 0.20, 0.05, 0.04, 0.03, 0.02]
     resp = client.post(
         "/api/identify",
         files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
@@ -78,8 +81,10 @@ def test_not_sure_false_when_confident(client):
 
 
 def test_not_sure_true_when_low_confidence(client):
-    # Dial the top-1 prob below the 0.30 threshold; the fake reads this live.
-    FakePlantModel.probs = [0.18, 0.15, 0.12, 0.10, 0.08]
+    # Dial the top-1 prob just below the (data-driven) threshold -> not sure.
+    from app import main
+    low = max(main.NOT_SURE_THRESHOLD - 0.05, 0.01)
+    FakePlantModel.probs = [low, 0.04, 0.03, 0.02, 0.01]
     resp = client.post(
         "/api/identify",
         files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},

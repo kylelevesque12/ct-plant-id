@@ -43,12 +43,27 @@ except Exception:  # module missing or not yet importable
 STATIC_DIR = ROOT / "app" / "static"
 CKPT_PATH = ROOT / "runs" / "stage2" / "model.pt"
 
-# Below this top-1 probability we flag the result as "not sure". Real phone
-# photos (bad angles, mixed foliage, out-of-distribution plants) commonly land
-# in the 0.1-0.3 band while still being top-5-correct 93% of the time, so we
-# want to caution rather than assert. 0.30 keeps confident IDs clean while
-# steering the genuinely ambiguous shots toward "here are some possibilities".
-NOT_SURE_THRESHOLD = 0.30
+# Below this top-1 probability we flag the result as "not sure". Set from the
+# calibration study (scripts/calibrate.py, reports/calibration.json): the model
+# is UNDERconfident (label smoothing) — at a ~25% top guess it's still top-1
+# correct ~79% and top-5 ~93%, so the old 0.30 wrongly flagged good predictions.
+# Accuracy only collapses below ~0.10-0.15, so 0.15 is the honest cutoff.
+# (Temperature scaling to make the displayed % itself meaningful is the next step.)
+NOT_SURE_THRESHOLD = 0.15
+
+
+# Qualitative confidence label from the calibration study's accuracy bands
+# (reports/calibration.json). The model is underconfident, so a raw "26%" is
+# misleading — these labels say what the probability ACTUALLY means:
+#   >=0.50 ~ 84-100% top-1 correct, 0.30-0.50 ~ 74-87%, 0.15-0.30 ~ 57-79%.
+def confidence_label(prob: float) -> str:
+    if prob >= 0.50:
+        return "Strong match"
+    if prob >= 0.30:
+        return "Likely match"
+    if prob >= NOT_SURE_THRESHOLD:
+        return "Possible match"
+    return "Uncertain"
 
 # Reject oversized uploads before decoding to bound memory. Phone photos are a
 # few MB; 15MB is generous headroom without inviting decompression-bomb abuse.
@@ -58,7 +73,12 @@ app = FastAPI(title="CT Plant ID")
 
 # Load the model once at startup. This is intentionally at import time so the
 # first request is fast and health checks reflect a truly-ready server.
-model = PlantModel(str(CKPT_PATH))
+# Force CPU: Apple's MPS backend is faster but can crash (segfault) the whole
+# process on some inputs, which takes the server down mid-session. CPU inference
+# of one 384px image is well under 2s here and rock-solid — the right trade for
+# serving. (Set CTPLANT_DEVICE to override, e.g. "cuda" on a GPU host.)
+import os  # noqa: E402
+model = PlantModel(str(CKPT_PATH), device=os.environ.get("CTPLANT_DEVICE", "cpu"))
 
 # The frontend is owned by another agent and may not have landed yet. Ensure
 # the directory exists so the StaticFiles mount and GET / don't crash the
@@ -78,6 +98,7 @@ class Candidate(BaseModel):
 class IdentifyResponse(BaseModel):
     top_species: str
     not_sure: bool
+    confidence_label: str  # qualitative, honest label for the top match
     candidates: list[Candidate]
 
 
@@ -151,5 +172,6 @@ async def identify(image: UploadFile = File(...)):
     return IdentifyResponse(
         top_species=top.species,
         not_sure=top.prob < NOT_SURE_THRESHOLD,
+        confidence_label=confidence_label(top.prob),
         candidates=candidates,
     )
