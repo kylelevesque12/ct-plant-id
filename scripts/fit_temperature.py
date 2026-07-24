@@ -15,6 +15,7 @@ Run: .venv/bin/python scripts/fit_temperature.py
 """
 import importlib.util
 import json
+import argparse
 import os
 import sys
 
@@ -30,8 +31,7 @@ _spec = importlib.util.spec_from_file_location(
 calib = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(calib)
 
-CKPT = os.path.join(ROOT, "runs", "stage2", "model.pt")
-OUT = os.path.join(ROOT, "runs", "stage2", "temperature.json")
+DEFAULT_MODEL = os.path.join(ROOT, "runs", "b_stage2", "model.pt")
 
 
 def ece(probs, correct, n_bins=10):
@@ -49,7 +49,18 @@ def ece(probs, correct, n_bins=10):
 
 
 def main():
-    model = PlantModel(CKPT, device="cpu")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default=DEFAULT_MODEL,
+                    help="checkpoint to calibrate (default: the Workstream B model)")
+    ap.add_argument("--out", default="",
+                    help="temperature.json path (default: next to the model)")
+    ap.add_argument("--device",
+                    default="cuda" if torch.cuda.is_available() else "cpu")
+    args = ap.parse_args()
+    out = args.out or os.path.join(os.path.dirname(os.path.abspath(args.model)),
+                                   "temperature.json")
+
+    model = PlantModel(args.model, device=args.device)
     name_to_idx = {n: i for i, n in enumerate(model.classes)}
     species = calib.sample_species(model.classes)
     print(f"fitting temperature on {len(species)} species (held-out test split)…")
@@ -98,8 +109,8 @@ def main():
                "ece_before": round(ece(p1, c1), 4), "ece_after": round(ece(pT, cT), 4),
                "mean_conf_before": round(sum(p1)/n, 4),
                "mean_conf_after": round(sum(pT)/n, 4)},
-              open(OUT, "w"), indent=2)
-    print(f"\nwrote {os.path.relpath(OUT, ROOT)}  (predict.py auto-loads it)")
+              open(out, "w"), indent=2)
+    print(f"\nwrote {os.path.relpath(out, ROOT)}  (predict.py auto-loads it)")
 
 
 if __name__ == "__main__":
