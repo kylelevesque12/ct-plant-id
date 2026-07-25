@@ -42,6 +42,47 @@ revisit only if we move to a $6 box or the model grows a lot.
 
 ---
 
+## 1b. Co-hosting the NFL project on the same box
+
+Both portfolio apps should share **one droplet and one domain**. Subdomains are
+free, Caddy routes by hostname, and the two workloads barely overlap in time.
+
+**Measured/estimated footprints:**
+
+| app | runtime memory | serving data | notes |
+|-----|----------------|--------------|-------|
+| Fieldnote (plant ID) | **394 MB** (measured) | 109 MB model artifacts | torch + one model in memory |
+| NFL value analysis | ~350–500 MB (est.) | ~50 MB — `data/processed/` + `outputs/` + 3 raw CSVs | Streamlit + pandas + plotly |
+
+The NFL repo is 2.3 GB locally, but that's notebooks, the 425 MB `data/raw/`
+pull, and a venv — **none of which the served app needs.** Ship only
+`app/`, `src/`, `data/processed/`, `outputs/`, and the three raw CSVs the app
+actually reads.
+
+**Sizing:** together ~900 MB + ~400 MB OS ≈ **1.3 GB**. Start on the **2 GB
+droplet ($12/mo)**; DigitalOcean can resize RAM/CPU up later without rebuilding
+(disk growth is one-way, RAM/CPU is reversible). Two separate 2 GB droplets
+would be $24/mo — so co-hosting **saves ~$144/yr** and halves the maintenance.
+
+```
+                    ┌─ fieldnote.<domain>  → :8700  uvicorn  (plant ID)
+phone/laptop ─TLS─ Caddy
+                    └─ nfl.<domain>        → :8501  streamlit (NFL value)
+```
+
+**Streamlit-specific gotcha:** Streamlit talks over **websockets**, so the proxy
+must forward upgrade requests. Caddy's `reverse_proxy` does this automatically —
+one of the reasons to prefer it over hand-rolled nginx config here. Run it with
+`--server.headless true --server.address 127.0.0.1` and set
+`--server.baseUrlPath` only if serving under a path instead of a subdomain.
+
+**On "more polished than Streamlit":** that's a *frontend rebuild*, not a hosting
+problem — and this repo is the template. Fieldnote's stack (FastAPI JSON API +
+vanilla-JS front end, no framework) is proven, already deployed by this plan, and
+would slot onto the same droplet as a third service with no new infrastructure.
+Deploy Streamlit now; rebuild the frontend later as its own project, and swap the
+port behind the same subdomain when it's ready.
+
 ## 2. Architecture (deliberately boring)
 
 ```
@@ -126,9 +167,11 @@ an identification returns, "Add to Home Screen" installs it.
 
 | item | monthly |
 |------|---------|
-| droplet (2 GB) | ~$12 |
-| domain | ~$1 (annualized) or $0 with DuckDNS |
+| droplet (2 GB, **both apps**) | ~$12 |
+| domain (covers both via subdomains) | ~$1 (annualized) |
 | DO volume (dataset, keep for Workstream C) | ~$7 |
+
+Co-hosting vs. two separate droplets + two domains saves roughly **$156/yr**.
 
 Note the volume is a *training* cost, not a serving one — it can be destroyed
 once no further retrains are planned, but the combined wild+ornamental dataset

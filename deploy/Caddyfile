@@ -1,10 +1,12 @@
-# Caddy config for Fieldnote. Install to /etc/caddy/Caddyfile, replace the
-# domain below, then: systemctl reload caddy
+# Caddy config — routes BOTH portfolio apps off one droplet and one domain.
+# Install to /etc/caddy/Caddyfile, replace <domain>, then: systemctl reload caddy
 #
-# Caddy obtains and renews the Let's Encrypt certificate automatically — HTTPS is
-# not optional here, the PWA's camera capture and service worker require it.
+# Caddy obtains and renews Let's Encrypt certificates automatically for every
+# hostname listed here. HTTPS is not optional for Fieldnote: the PWA's camera
+# capture, service worker, and add-to-home-screen all require a secure context.
 
-fieldnote.example.com {
+# ---------- Fieldnote: CT plant ID (FastAPI + PWA) ----------
+fieldnote.<domain> {
     encode gzip
 
     # Phone photos are large; the API caps uploads itself but the proxy needs
@@ -14,7 +16,7 @@ fieldnote.example.com {
     }
 
     reverse_proxy 127.0.0.1:8700 {
-        # Model load + inference is quick, but be generous on a 1-vCPU box.
+        # Inference is ~0.1s, but be generous on a 1-vCPU box.
         transport http {
             response_header_timeout 60s
         }
@@ -22,5 +24,22 @@ fieldnote.example.com {
 
     log {
         output file /var/log/caddy/fieldnote.log
+    }
+}
+
+# ---------- NFL player value analysis (Streamlit) ----------
+# Streamlit runs over websockets; Caddy's reverse_proxy forwards the upgrade
+# handshake automatically, so no extra config is needed for that.
+nfl.<domain> {
+    encode gzip
+
+    reverse_proxy 127.0.0.1:8501 {
+        transport http {
+            response_header_timeout 120s
+        }
+    }
+
+    log {
+        output file /var/log/caddy/nfl.log
     }
 }
