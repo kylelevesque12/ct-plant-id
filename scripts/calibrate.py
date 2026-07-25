@@ -60,16 +60,31 @@ def sample_species(classes):
     return [{"taxon_id": t, "name": nm} for _, t, nm in rows[::step]][:N_SPECIES]
 
 
+def _get_json(params, tries=4):
+    """GET with retry+backoff. A single transient ReadTimeout used to kill a
+    15-minute calibration run outright; a dropped page is not worth that."""
+    for attempt in range(tries):
+        try:
+            r = requests.get(f"{API}/observations", params=params,
+                             headers=HEADERS, timeout=60)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            if attempt == tries - 1:
+                print(f"    page failed after {tries} tries ({type(e).__name__}); skipping")
+                return None
+            time.sleep(3 * (attempt + 1))
+
+
 def test_photos(taxon_id, cap):
     imgs, scanned, page = [], 0, 1
     while len(imgs) < cap and scanned < MAX_SCAN:
-        r = requests.get(f"{API}/observations",
-                         params={"taxon_id": taxon_id, "place_id": CT_PLACE_ID,
-                                 "quality_grade": "research", "photos": "true",
-                                 "order_by": "votes", "per_page": 50, "page": page},
-                         headers=HEADERS, timeout=60)
-        r.raise_for_status()
-        res = r.json()["results"]
+        payload = _get_json({"taxon_id": taxon_id, "place_id": CT_PLACE_ID,
+                             "quality_grade": "research", "photos": "true",
+                             "order_by": "votes", "per_page": 50, "page": page})
+        if payload is None:
+            break
+        res = payload["results"]
         if not res:
             break
         for obs in res:

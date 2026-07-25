@@ -41,7 +41,10 @@ except Exception:  # module missing or not yet importable
         return {"common_name": None, "status": "unknown", "is_weed": False}
 
 STATIC_DIR = ROOT / "app" / "static"
-CKPT_PATH = ROOT / "runs" / "stage2" / "model.pt"
+# Workstream B model: 2,510 classes = CT wild flora + ~150 cultivated ornamentals
+# (garden plants people actually photograph), trained with blur/perspective augs.
+# temperature.json and ood_bank.npz sit beside it and are auto-loaded by PlantModel.
+CKPT_PATH = ROOT / "runs" / "b_stage2" / "model.pt"
 
 # The model's probabilities are now TEMPERATURE-CALIBRATED in predict.py
 # (scripts/fit_temperature.py fit T=0.6, dropping ECE 0.31 -> 0.05). So the

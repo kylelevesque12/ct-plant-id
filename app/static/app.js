@@ -86,6 +86,9 @@
     }
     if (status === "native")     return { cls: "native", label: "Native", warn: false };
     if (status === "introduced") return { cls: "introduced", label: "Introduced", warn: false };
+    // A cultivated garden/landscape plant — useful precisely because it means
+    // "planted on purpose", i.e. not something to pull.
+    if (status === "ornamental") return { cls: "ornamental", label: "Garden plant", warn: false };
     return { cls: "unknown", label: "Status unknown", warn: false };
   }
 
@@ -144,6 +147,7 @@
     var railVar = (showStatus && topInfo.warn) ? "var(--invasive)"
                 : (showStatus && topInfo.cls === "native") ? "var(--native)"
                 : (showStatus && topInfo.cls === "introduced") ? "var(--introduced)"
+                : (showStatus && topInfo.cls === "ornamental") ? "var(--ornamental)"
                 : (oob || data.not_sure) ? "var(--introduced)" : "var(--accent)";
     topCard.style.setProperty("--rail", railVar);
 

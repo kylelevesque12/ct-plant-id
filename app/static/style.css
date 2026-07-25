@@ -30,6 +30,7 @@
   --native:     #2e7d4f;  --native-bg:     #e3f1e6;  --native-ink:     #1d5636;
   --introduced: #a9700f;  --introduced-bg: #f6ecd6;  --introduced-ink: #7a4f08;
   --invasive:   #c0392b;  --invasive-bg:   #fbe4e0;  --invasive-ink:   #8f261b;
+  --ornamental: #2f6f9e;  --ornamental-bg: #e2eef7;  --ornamental-ink: #1e4d70;
   --unknown:    #6b7280;  --unknown-bg:    #ecedef;  --unknown-ink:    #4a5058;
 
   --radius:    18px;
@@ -66,6 +67,7 @@
     --native:     #5fbf85;  --native-bg:     #172c1f;  --native-ink:     #9bdcb3;
     --introduced: #d6a344;  --introduced-bg: #302713;  --introduced-ink: #e7c583;
     --invasive:   #e8756a;  --invasive-bg:   #35191a;  --invasive-ink:   #f4a49b;
+    --ornamental: #6ba9d6;  --ornamental-bg: #16242e;  --ornamental-ink: #a4cfea;
     --unknown:    #9aa2ac;  --unknown-bg:    #23282b;  --unknown-ink:    #c1c7cd;
 
     --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 26px -14px rgba(0,0,0,.7);
@@ -82,6 +84,7 @@
   --native:#2e7d4f; --native-bg:#e3f1e6; --native-ink:#1d5636;
   --introduced:#a9700f; --introduced-bg:#f6ecd6; --introduced-ink:#7a4f08;
   --invasive:#c0392b; --invasive-bg:#fbe4e0; --invasive-ink:#8f261b;
+  --ornamental:#2f6f9e; --ornamental-bg:#e2eef7; --ornamental-ink:#1e4d70;
   --unknown:#6b7280; --unknown-bg:#ecedef; --unknown-ink:#4a5058;
   --shadow:0 1px 2px rgba(28,43,34,.05),0 8px 24px -12px rgba(28,43,34,.18);
   --shadow-lg:0 2px 4px rgba(28,43,34,.06),0 20px 44px -18px rgba(28,43,34,.30);
@@ -94,6 +97,7 @@
   --native:#5fbf85; --native-bg:#172c1f; --native-ink:#9bdcb3;
   --introduced:#d6a344; --introduced-bg:#302713; --introduced-ink:#e7c583;
   --invasive:#e8756a; --invasive-bg:#35191a; --invasive-ink:#f4a49b;
+  --ornamental:#6ba9d6; --ornamental-bg:#16242e; --ornamental-ink:#a4cfea;
   --unknown:#9aa2ac; --unknown-bg:#23282b; --unknown-ink:#c1c7cd;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px -14px rgba(0,0,0,.7);
   --shadow-lg:0 2px 6px rgba(0,0,0,.5),0 24px 50px -20px rgba(0,0,0,.8);
@@ -400,6 +404,7 @@ main {
 
 .badge.native     { background: var(--native-bg);     color: var(--native-ink);     border-color: color-mix(in srgb, var(--native) 30%, transparent); }
 .badge.introduced { background: var(--introduced-bg); color: var(--introduced-ink); border-color: color-mix(in srgb, var(--introduced) 32%, transparent); }
+.badge.ornamental { background: var(--ornamental-bg); color: var(--ornamental-ink); border-color: color-mix(in srgb, var(--ornamental) 30%, transparent); }
 .badge.unknown    { background: var(--unknown-bg);    color: var(--unknown-ink);    border-color: color-mix(in srgb, var(--unknown) 28%, transparent); }
 
 /* Invasive / weed — the loud one. Filled, with a warning icon. */

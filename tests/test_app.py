@@ -202,6 +202,17 @@ def test_annotate_invasive_species():
     assert result["is_weed"] is True
 
 
+def test_annotate_ornamental_species():
+    # Workstream B added cultivated garden species; they should carry the
+    # "ornamental" status (a known fact from the cultivated scope), a common
+    # name, and must never be flagged a weed.
+    attributes = pytest.importorskip("app.attributes")
+    result = attributes.annotate("Hydrangea paniculata")
+    assert result["status"] == "ornamental"
+    assert result["is_weed"] is False
+    assert result["common_name"]
+
+
 def test_annotate_unknown_species_safe_defaults():
     attributes = pytest.importorskip("app.attributes")
     # A typo / unheard-of binomial must not raise and must fall back safely.

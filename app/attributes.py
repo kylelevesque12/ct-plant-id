@@ -9,7 +9,7 @@ Contract (consumed by app/main.py):
 
     annotate("Alliaria petiolata")
     # -> {"common_name": "garlic mustard" | None,
-    #     "status": "native" | "introduced" | "invasive" | "unknown",
+    #     "status": "native" | "introduced" | "invasive" | "ornamental" | "unknown",
     #     "is_weed": bool}
 
 Design choices:
@@ -22,6 +22,9 @@ Design choices:
     "introduced" only for a hand-verified set of unambiguously non-native lawn
     weeds. For the long tail we say "unknown" rather than guess native vs.
     introduced — a wrong "native" label is worse than an honest "unknown".
+    "ornamental" (a planted garden/landscape plant) is likewise asserted only
+    for the curated cultivated scope added in Workstream B, where cultivation
+    is a known fact rather than an inference — and never overrides "invasive".
 
 Data files (built offline, loaded here):
   - data/attributes.csv     species, status, is_weed, cipwg_category, source
@@ -37,7 +40,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 _ATTRIBUTES_CSV = _ROOT / "data" / "attributes.csv"
 _COMMON_NAMES_CSV = _ROOT / "data" / "common_names.csv"
 
-_VALID_STATUS = {"native", "introduced", "invasive", "unknown"}
+_VALID_STATUS = {"native", "introduced", "invasive", "ornamental", "unknown"}
 
 
 class Annotation(TypedDict):
