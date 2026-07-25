@@ -27,19 +27,26 @@ fieldnote.<domain> {
     }
 }
 
-# ---------- NFL player value analysis (Streamlit) ----------
-# Streamlit runs over websockets; Caddy's reverse_proxy forwards the upgrade
-# handshake automatically, so no extra config is needed for that.
-nfl.<domain> {
-    encode gzip
-
-    reverse_proxy 127.0.0.1:8501 {
-        transport http {
-            response_header_timeout 120s
-        }
-    }
-
-    log {
-        output file /var/log/caddy/nfl.log
-    }
-}
+# ---------- NFL player value analysis (Streamlit) — NOT YET DEPLOYED ----------
+# Kept commented on purpose. Caddy tries to obtain a certificate for EVERY
+# hostname in this file the moment it loads; if nfl.<domain> has no DNS record
+# (or nothing is listening on :8501), that request fails and Caddy retries in a
+# loop, spamming the log and rate-limiting you against Let's Encrypt.
+#
+# To add the NFL app later: create the DNS A record, start Streamlit on 8501
+# (--server.headless true --server.address 127.0.0.1), uncomment this block,
+# then `systemctl reload caddy`. Websocket upgrades are handled automatically.
+#
+# nfl.<domain> {
+#     encode gzip
+#
+#     reverse_proxy 127.0.0.1:8501 {
+#         transport http {
+#             response_header_timeout 120s
+#         }
+#     }
+#
+#     log {
+#         output file /var/log/caddy/nfl.log
+#     }
+# }
