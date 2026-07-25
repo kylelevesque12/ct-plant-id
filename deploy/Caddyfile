@@ -9,6 +9,14 @@
 fieldnote.kylelevesque.me {
     encode gzip
 
+    # The app shell is served from disk with only ETag/Last-Modified and NO
+    # Cache-Control, which makes browsers apply *heuristic* freshness — they can
+    # serve a stale app.js for hours without ever asking the server. "no-cache"
+    # means "you may store it, but always revalidate", so a deploy reaches
+    # phones on the next load while unchanged files still cost only a 304.
+    header /static/* Cache-Control "no-cache"
+    header / Cache-Control "no-cache"
+
     # Phone photos are large; the API caps uploads itself but the proxy needs
     # room to pass them through.
     request_body {
