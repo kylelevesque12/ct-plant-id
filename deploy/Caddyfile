@@ -1,12 +1,12 @@
 # Caddy config — routes BOTH portfolio apps off one droplet and one domain.
-# Install to /etc/caddy/Caddyfile, replace <domain>, then: systemctl reload caddy
+# Install to /etc/caddy/Caddyfile, then: systemctl reload caddy
 #
 # Caddy obtains and renews Let's Encrypt certificates automatically for every
 # hostname listed here. HTTPS is not optional for Fieldnote: the PWA's camera
 # capture, service worker, and add-to-home-screen all require a secure context.
 
 # ---------- Fieldnote: CT plant ID (FastAPI + PWA) ----------
-fieldnote.<domain> {
+fieldnote.kylelevesque.me {
     encode gzip
 
     # Phone photos are large; the API caps uploads itself but the proxy needs
@@ -22,14 +22,13 @@ fieldnote.<domain> {
         }
     }
 
-    log {
-        output file /var/log/caddy/fieldnote.log
-    }
+    # Logs go to journald (the package's systemd unit is hardened and cannot
+    # write to /var/log/caddy). Read them with: journalctl -u caddy -f
 }
 
 # ---------- NFL player value analysis (Streamlit) — NOT YET DEPLOYED ----------
 # Kept commented on purpose. Caddy tries to obtain a certificate for EVERY
-# hostname in this file the moment it loads; if nfl.<domain> has no DNS record
+# hostname in this file the moment it loads; if nfl.kylelevesque.me has no DNS record
 # (or nothing is listening on :8501), that request fails and Caddy retries in a
 # loop, spamming the log and rate-limiting you against Let's Encrypt.
 #
@@ -37,16 +36,12 @@ fieldnote.<domain> {
 # (--server.headless true --server.address 127.0.0.1), uncomment this block,
 # then `systemctl reload caddy`. Websocket upgrades are handled automatically.
 #
-# nfl.<domain> {
+# nfl.kylelevesque.me {
 #     encode gzip
 #
 #     reverse_proxy 127.0.0.1:8501 {
 #         transport http {
 #             response_header_timeout 120s
 #         }
-#     }
-#
-#     log {
-#         output file /var/log/caddy/nfl.log
 #     }
 # }
