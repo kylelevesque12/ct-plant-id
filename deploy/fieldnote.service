@@ -1,0 +1,28 @@
+# systemd unit for the Fieldnote API. Install to /etc/systemd/system/ then:
+#   systemctl daemon-reload && systemctl enable --now fieldnote
+#
+# Binds to 127.0.0.1 ONLY — Caddy terminates TLS and proxies to it, so the
+# uvicorn port is never exposed to the internet directly.
+[Unit]
+Description=Fieldnote CT Plant ID API
+After=network.target
+
+[Service]
+Type=simple
+User=fieldnote
+WorkingDirectory=/opt/fieldnote
+Environment=CTPLANT_DEVICE=cpu
+ExecStart=/opt/fieldnote/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8700
+# The model takes a few seconds to load; give it room before health checks bite.
+TimeoutStartSec=120
+Restart=always
+RestartSec=5
+# Light hardening: no new privileges, private /tmp, read-only system dirs.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/fieldnote
+
+[Install]
+WantedBy=multi-user.target

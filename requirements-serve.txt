@@ -1,0 +1,17 @@
+# Minimal SERVING dependencies (production droplet). No pandas/pytest/requests —
+# those belong to the training + data pipeline, not the API.
+#
+# Install torch from the CPU-only index: it omits the bundled CUDA libraries and
+# is ~200MB instead of ~800MB+, which matters on a small droplet.
+#
+#   pip install -r requirements-serve.txt --extra-index-url https://download.pytorch.org/whl/cpu
+#
+# Measured footprint with these: ~394MB RSS, ~0.1s per identification on 1 vCPU.
+torch>=2.2,<3
+torchvision>=0.17,<1
+timm>=1.0,<2
+pillow>=10,<14
+numpy>=1.26,<3
+fastapi>=0.110,<1
+uvicorn[standard]>=0.27,<1
+python-multipart>=0.0.9,<1

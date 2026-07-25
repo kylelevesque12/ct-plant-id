@@ -1,0 +1,26 @@
+# Caddy config for Fieldnote. Install to /etc/caddy/Caddyfile, replace the
+# domain below, then: systemctl reload caddy
+#
+# Caddy obtains and renews the Let's Encrypt certificate automatically — HTTPS is
+# not optional here, the PWA's camera capture and service worker require it.
+
+fieldnote.example.com {
+    encode gzip
+
+    # Phone photos are large; the API caps uploads itself but the proxy needs
+    # room to pass them through.
+    request_body {
+        max_size 12MB
+    }
+
+    reverse_proxy 127.0.0.1:8700 {
+        # Model load + inference is quick, but be generous on a 1-vCPU box.
+        transport http {
+            response_header_timeout 60s
+        }
+    }
+
+    log {
+        output file /var/log/caddy/fieldnote.log
+    }
+}

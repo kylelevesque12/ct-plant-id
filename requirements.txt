@@ -11,6 +11,7 @@ pillow
 # App (server + PWA), mirrors the landscaping stack
 fastapi
 uvicorn[standard]
+python-multipart   # REQUIRED for multipart file upload (/api/identify)
 
 # Dev
 pytest
