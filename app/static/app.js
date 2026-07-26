@@ -160,12 +160,40 @@
     // contradict "outside my range") — call it the closest match instead.
     rank.appendChild(document.createTextNode(
       oob ? "Closest match"
+          : (data.lead_with_genus === true) ? "Narrowed to a group"
           : (data.confidence_label || (data.not_sure ? "Best guess" : "Most likely match"))));
     topCard.appendChild(rank);
 
+    // Genus fallback: when the species is a coin-flip but the genus isn't, the
+    // genus IS the answer — "an oak" beats a confidently wrong oak. The species
+    // guesses remain visible below as possibilities.
     var nm = names(top);
-    topCard.appendChild(el("h2", "top-name", nm.primary));
-    if (nm.secondary) topCard.appendChild(el("p", "top-latin", nm.secondary));
+    if (data.lead_with_genus === true && data.genus) {
+      var gLabel = data.genus_label || data.genus;
+      topCard.appendChild(el("h2", "top-name", "Some kind of " + gLabel));
+      topCard.appendChild(el("p", "top-latin", data.genus));
+      var gnote = el("p", "genus-note");
+      gnote.appendChild(document.createTextNode(
+        "Confident about the " + gLabel + ", not the exact species — likely "
+        + nm.primary + "."));
+      topCard.appendChild(gnote);
+    } else {
+      topCard.appendChild(el("h2", "top-name", nm.primary));
+      if (nm.secondary) topCard.appendChild(el("p", "top-latin", nm.secondary));
+    }
+
+    // Hazard warning — independent of status, and shown even when the status
+    // flag is suppressed: "will this hurt me" outranks "is it native".
+    if (top.hazard) {
+      var hz = el("div", "hazard");
+      var hzIcon = document.createElement("span");
+      hzIcon.setAttribute("aria-hidden", "true");
+      hzIcon.style.display = "inline-flex";
+      hzIcon.innerHTML = WARN_SVG; // static, author-controlled markup
+      hz.appendChild(hzIcon);
+      hz.appendChild(el("span", "hazard-text", top.hazard));
+      topCard.appendChild(hz);
+    }
 
     var badges = el("div", "top-badges");
     if (data.show_status !== false) {
@@ -182,20 +210,25 @@
     }
     topCard.appendChild(badges);
 
-    // confidence meter
+    // Confidence meter. When the headline IS the genus, the number must be the
+    // genus probability — showing the species' 40% under "Some kind of oak"
+    // would understate exactly the claim being made.
+    var leadingGenus = data.lead_with_genus === true && data.genus;
+    var confValue = leadingGenus ? (Number(data.genus_prob) || 0) : top.prob;
     var conf = el("div", "confidence");
     var row = el("div", "confidence-row");
-    row.appendChild(el("span", "confidence-label", "Confidence"));
-    row.appendChild(el("span", "confidence-val", pct(top.prob) + "%"));
+    row.appendChild(el("span", "confidence-label",
+      leadingGenus ? "Confidence in the group" : "Confidence"));
+    row.appendChild(el("span", "confidence-val", pct(confValue) + "%"));
     conf.appendChild(row);
     var meter = el("div", "meter");
-    var fill = el("div", "meter-fill" + (data.not_sure ? " low" : ""));
+    var fill = el("div", "meter-fill" + ((data.not_sure && !leadingGenus) ? " low" : ""));
     meter.appendChild(fill);
     conf.appendChild(meter);
     topCard.appendChild(conf);
     // animate width after paint
     requestAnimationFrame(function () {
-      requestAnimationFrame(function () { fill.style.width = pct(top.prob) + "%"; });
+      requestAnimationFrame(function () { fill.style.width = pct(confValue) + "%"; });
     });
 
     // ---- ranked list 2..5 ----

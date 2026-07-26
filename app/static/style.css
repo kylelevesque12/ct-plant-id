@@ -405,6 +405,22 @@ main {
 .badge.native     { background: var(--native-bg);     color: var(--native-ink);     border-color: color-mix(in srgb, var(--native) 30%, transparent); }
 .badge.introduced { background: var(--introduced-bg); color: var(--introduced-ink); border-color: color-mix(in srgb, var(--introduced) 32%, transparent); }
 .badge.ornamental { background: var(--ornamental-bg); color: var(--ornamental-ink); border-color: color-mix(in srgb, var(--ornamental) 30%, transparent); }
+
+/* Genus fallback: the explanatory line under a group-level answer. */
+.genus-note {
+  margin: 8px 0 0; font-size: .9rem; line-height: 1.45;
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+}
+
+/* Hazard warning — loud on purpose, and independent of the status badge. */
+.hazard {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: 14px 0 0; padding: 10px 12px; border-radius: 12px;
+  background: var(--invasive-bg); color: var(--invasive-ink);
+  border: 1px solid color-mix(in srgb, var(--invasive) 34%, transparent);
+}
+.hazard svg { flex: none; margin-top: 2px; }
+.hazard-text { font-size: .92rem; font-weight: 650; line-height: 1.4; }
 .badge.unknown    { background: var(--unknown-bg);    color: var(--unknown-ink);    border-color: color-mix(in srgb, var(--unknown) 28%, transparent); }
 
 /* Invasive / weed — the loud one. Filled, with a warning icon. */

@@ -160,6 +160,79 @@ def test_in_scope_default_reports_out_of_scope_false(client):
     assert resp.json()["out_of_scope"] is False
 
 
+def test_genus_fallback_leads_when_species_uncertain_but_genus_is_not(client):
+    # The case both evaluations found: torn between congeners, so no single
+    # species clears the bar while the genus total is high. Lead with the genus.
+    FakePlantModel.probs = [0.35, 0.30, 0.20, 0.03, 0.02]
+    FakePlantModel.genus_prob = 0.85
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    body = resp.json()
+    assert body["lead_with_genus"] is True
+    assert body["genus"] == "Rosa"
+    assert body["genus_prob"] == 0.85
+
+
+def test_genus_fallback_off_when_species_is_confident(client):
+    FakePlantModel.probs = [0.88, 0.05, 0.03, 0.02, 0.01]
+    FakePlantModel.genus_prob = 0.95
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.json()["lead_with_genus"] is False
+
+
+def test_genus_fallback_off_when_genus_also_uncertain(client):
+    # Species AND genus both unsure -> nothing to fall back to; stay uncertain.
+    FakePlantModel.probs = [0.20, 0.15, 0.10, 0.05, 0.03]
+    FakePlantModel.genus_prob = 0.25
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.json()["lead_with_genus"] is False
+
+
+def test_out_of_scope_suppresses_genus_lead(client):
+    FakePlantModel.out_of_scope = True
+    FakePlantModel.probs = [0.35, 0.30, 0.20, 0.03, 0.02]
+    FakePlantModel.genus_prob = 0.85
+    resp = client.post(
+        "/api/identify",
+        files={"image": ("leaf.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert resp.json()["lead_with_genus"] is False
+
+
+def test_hazard_surfaces_for_poison_ivy():
+    # Perfect ID + "Status unknown" was the field-test gap: the status vocabulary
+    # had no way to say "this will give you a rash".
+    attributes = pytest.importorskip("app.attributes")
+    result = attributes.annotate("Toxicodendron radicans")
+    assert result["hazard"]
+    assert "rash" in result["hazard"].lower()
+
+
+def test_hazard_is_none_for_harmless_plant():
+    attributes = pytest.importorskip("app.attributes")
+    assert attributes.annotate("Acer rubrum")["hazard"] is None
+
+
+def test_genus_label_uses_group_noun_when_species_agree():
+    attributes = pytest.importorskip("app.attributes")
+    assert attributes.genus_label("Quercus") == "oak"
+    assert attributes.genus_label("Acer") == "maple"
+
+
+def test_genus_label_falls_back_to_scientific_name():
+    attributes = pytest.importorskip("app.attributes")
+    # A genus with no common-name data can't invent a group noun.
+    assert attributes.genus_label("Zzyzxia") == "Zzyzxia"
+
+
 def test_garbage_upload_is_4xx_not_500(client):
     resp = client.post(
         "/api/identify",
@@ -188,10 +261,10 @@ def test_missing_image_field_is_422(client):
 # attributes.py skips only these three tests, not the whole module.
 
 
-def test_annotate_always_returns_three_keys():
+def test_annotate_always_returns_the_documented_keys():
     attributes = pytest.importorskip("app.attributes")
     result = attributes.annotate("Acer rubrum")
-    assert set(result.keys()) == {"common_name", "status", "is_weed"}
+    assert set(result.keys()) == {"common_name", "status", "is_weed", "hazard"}
 
 
 def test_annotate_invasive_species():
@@ -217,6 +290,7 @@ def test_annotate_unknown_species_safe_defaults():
     attributes = pytest.importorskip("app.attributes")
     # A typo / unheard-of binomial must not raise and must fall back safely.
     result = attributes.annotate("Zzyzx nonexistus")
-    assert set(result.keys()) == {"common_name", "status", "is_weed"}
-    assert result["status"] in {"native", "introduced", "invasive", "unknown"}
+    assert set(result.keys()) == {"common_name", "status", "is_weed", "hazard"}
+    assert result["status"] in {"native", "introduced", "invasive", "ornamental", "unknown"}
     assert isinstance(result["is_weed"], bool)
+    assert result["hazard"] is None

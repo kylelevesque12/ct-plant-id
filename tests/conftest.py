@@ -62,9 +62,14 @@ class FakePlantModel:
             for i in range(n)
         ]
 
+    # Genus aggregate the app uses for the genus fallback; tests can dial it.
+    genus = "Rosa"
+    genus_prob = 0.90
+
     def identify(self, pil_image, k=5):
         # Mirrors the real model's rich result the app consumes.
         return {"candidates": self.predict(pil_image, k),
+                "genus": self.genus, "genus_prob": self.genus_prob,
                 "out_of_scope": self.out_of_scope, "ood_score": None}
 
 
@@ -80,6 +85,8 @@ def client():
 
     FakePlantModel.probs = [0.85, 0.07, 0.04, 0.03, 0.01]
     FakePlantModel.out_of_scope = False
+    FakePlantModel.genus = "Rosa"
+    FakePlantModel.genus_prob = 0.90
 
     predict_mod = importlib.import_module("ctplantid.predict")
     real_plantmodel = predict_mod.PlantModel

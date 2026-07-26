@@ -1,0 +1,303 @@
+{
+  "n_photos": 648,
+  "cohort_size": 55,
+  "species_in_scope": 54,
+  "species_missing": [
+    "Malus floribunda"
+  ],
+  "coverage": 0.9818181818181818,
+  "scored": {
+    "species_top1": 0.49691358024691357,
+    "species_top5": 0.7391975308641975,
+    "genus_top1": 0.6774691358024691,
+    "genus_top5": 0.845679012345679
+  },
+  "coverage_penalised": {
+    "species_top1": 0.48787878787878786,
+    "species_top5": 0.7257575757575757,
+    "genus_top1": 0.6651515151515152,
+    "genus_top5": 0.8303030303030303
+  },
+  "reference": {
+    "PictureThis": {
+      "genus": 0.973,
+      "species": 0.839
+    },
+    "iNaturalist": {
+      "genus": 0.923,
+      "species": 0.696
+    }
+  },
+  "per_species": {
+    "Acer rubrum": {
+      "n": 12,
+      "species_top1": 0.75,
+      "genus_top1": 0.75
+    },
+    "Acer saccharum": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.75
+    },
+    "Quercus rubra": {
+      "n": 12,
+      "species_top1": 0.16666666666666666,
+      "genus_top1": 0.8333333333333334
+    },
+    "Quercus alba": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.6666666666666666
+    },
+    "Quercus palustris": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.75
+    },
+    "Quercus velutina": {
+      "n": 12,
+      "species_top1": 0.16666666666666666,
+      "genus_top1": 0.5
+    },
+    "Fagus grandifolia": {
+      "n": 12,
+      "species_top1": 0.5,
+      "genus_top1": 0.6666666666666666
+    },
+    "Betula lenta": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Betula alleghaniensis": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.8333333333333334
+    },
+    "Betula papyrifera": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.8333333333333334
+    },
+    "Carya ovata": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.8333333333333334
+    },
+    "Carya glabra": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.6666666666666666
+    },
+    "Liriodendron tulipifera": {
+      "n": 12,
+      "species_top1": 0.5,
+      "genus_top1": 0.5
+    },
+    "Liquidambar styraciflua": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.5833333333333334
+    },
+    "Nyssa sylvatica": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.4166666666666667
+    },
+    "Platanus occidentalis": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.4166666666666667
+    },
+    "Fraxinus americana": {
+      "n": 12,
+      "species_top1": 0.16666666666666666,
+      "genus_top1": 0.4166666666666667
+    },
+    "Tilia americana": {
+      "n": 12,
+      "species_top1": 0.25,
+      "genus_top1": 0.4166666666666667
+    },
+    "Ulmus americana": {
+      "n": 12,
+      "species_top1": 0.5,
+      "genus_top1": 0.5833333333333334
+    },
+    "Prunus serotina": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.75
+    },
+    "Sassafras albidum": {
+      "n": 12,
+      "species_top1": 0.75,
+      "genus_top1": 0.75
+    },
+    "Juglans nigra": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.5833333333333334
+    },
+    "Populus deltoides": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.6666666666666666
+    },
+    "Pinus strobus": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.9166666666666666
+    },
+    "Tsuga canadensis": {
+      "n": 12,
+      "species_top1": 0.5,
+      "genus_top1": 0.5
+    },
+    "Cornus florida": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.6666666666666666
+    },
+    "Cercis canadensis": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Castanea dentata": {
+      "n": 12,
+      "species_top1": 0.5,
+      "genus_top1": 0.5833333333333334
+    },
+    "Robinia pseudoacacia": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.5833333333333334
+    },
+    "Ostrya virginiana": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.3333333333333333
+    },
+    "Carpinus caroliniana": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.9166666666666666
+    },
+    "Amelanchier canadensis": {
+      "n": 12,
+      "species_top1": 0.0,
+      "genus_top1": 0.9166666666666666
+    },
+    "Acer saccharinum": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.5
+    },
+    "Quercus bicolor": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.75
+    },
+    "Pinus rigida": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.8333333333333334
+    },
+    "Ginkgo biloba": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.5833333333333334
+    },
+    "Zelkova serrata": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.3333333333333333
+    },
+    "Pyrus calleryana": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Acer platanoides": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 1.0
+    },
+    "Acer palmatum": {
+      "n": 12,
+      "species_top1": 0.9166666666666666,
+      "genus_top1": 0.9166666666666666
+    },
+    "Tilia cordata": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Quercus acutissima": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Prunus serrulata": {
+      "n": 12,
+      "species_top1": 0.3333333333333333,
+      "genus_top1": 0.8333333333333334
+    },
+    "Gleditsia triacanthos": {
+      "n": 12,
+      "species_top1": 0.9166666666666666,
+      "genus_top1": 0.9166666666666666
+    },
+    "Catalpa speciosa": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.9166666666666666
+    },
+    "Picea abies": {
+      "n": 12,
+      "species_top1": 0.4166666666666667,
+      "genus_top1": 0.8333333333333334
+    },
+    "Pinus nigra": {
+      "n": 12,
+      "species_top1": 0.5,
+      "genus_top1": 0.9166666666666666
+    },
+    "Ailanthus altissima": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Ulmus parvifolia": {
+      "n": 12,
+      "species_top1": 0.8333333333333334,
+      "genus_top1": 0.8333333333333334
+    },
+    "Koelreuteria paniculata": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Cladrastis kentukea": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.5833333333333334
+    },
+    "Magnolia grandiflora": {
+      "n": 12,
+      "species_top1": 0.5833333333333334,
+      "genus_top1": 0.8333333333333334
+    },
+    "Cryptomeria japonica": {
+      "n": 12,
+      "species_top1": 0.6666666666666666,
+      "genus_top1": 0.6666666666666666
+    },
+    "Metasequoia glyptostroboides": {
+      "n": 12,
+      "species_top1": 0.08333333333333333,
+      "genus_top1": 0.08333333333333333
+    }
+  }
+}

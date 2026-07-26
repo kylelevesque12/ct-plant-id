@@ -73,3 +73,35 @@ scripts/download_opendata.py         # bulk build from Open Data (--workers for 
 scripts/build_manifest_from_disk.py  # rebuild manifest if a download is interrupted
 scripts/filter_manifest.py           # drop non-photographable phyla
 ```
+
+## Status coverage (updated 2026-07-26)
+
+Field testing showed "Status unknown" on almost everything. Cause:
+`data/attributes.csv` only ever held the CT invasive list (88), a hand-verified
+weed set (14) and the Workstream B ornamentals (150) — **no native data at
+all**, so 2,258 of 2,510 classes (90%) had no status.
+
+`scripts/backfill_native_status.py` filled part of the gap from iNaturalist's
+curated `establishment_means` for Connecticut (place_id 49), never overwriting
+an existing invasive/ornamental/introduced value:
+
+| status | classes | share |
+|--------|---------|-------|
+| unknown | 1,205 | 48.0% |
+| introduced | 757 | 30.2% |
+| native | 310 | 12.4% |
+| ornamental | 150 | 6.0% |
+| invasive | 88 | 3.5% |
+| **have a status** | **1,305** | **52.0%** (was 10.0%) |
+
+**Known bias — do not read these shares as a description of CT's flora.**
+iNaturalist's establishment data is well curated for prominent species and
+sparse for the tail, and the tail here is disproportionately native. Species
+still marked unknown include *Asclepias incarnata*, *Panax quinquefolius*,
+*Eutrochium maculatum* and *Senna hebecarpa* — all unambiguous CT natives. The
+introduced labels spot-check as accurate; the native count is simply
+**incomplete**, which is why introduced appears to outnumber native 2.4:1.
+
+Remaining work: backfill the native tail from **USDA PLANTS**, the other source
+named in GOALS.md, which publishes native/introduced status per state
+comprehensively rather than by community curation.

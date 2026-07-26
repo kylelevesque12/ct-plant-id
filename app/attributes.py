@@ -47,6 +47,14 @@ class Annotation(TypedDict):
     common_name: Optional[str]
     status: str
     is_weed: bool
+    hazard: Optional[str]
+
+
+# Group nouns for a genus ("oak", "maple") are DERIVED from the last word of its
+# species' common names — 'northern red oak' and 'white oak' both end in "oak".
+# Only accepted when the species agree, so a genus with mixed names falls back
+# to its scientific name rather than inventing a misleading one.
+_GENUS_NOUN_MIN_AGREEMENT = 0.6
 
 
 def _normalize(species: str) -> str:
@@ -67,10 +75,11 @@ def _load_common_names() -> dict[str, str]:
     return names
 
 
-def _load_status() -> dict[str, tuple[str, bool]]:
+def _load_status() -> tuple[dict[str, tuple[str, bool]], dict[str, str]]:
     status: dict[str, tuple[str, bool]] = {}
+    hazards: dict[str, str] = {}
     if not _ATTRIBUTES_CSV.exists():
-        return status
+        return status, hazards
     with open(_ATTRIBUTES_CSV, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             species = (row.get("species") or "").strip()
@@ -81,12 +90,44 @@ def _load_status() -> dict[str, tuple[str, bool]]:
                 st = "unknown"
             is_weed = (row.get("is_weed") or "").strip().lower() in {"true", "1", "yes"}
             status[_normalize(species)] = (st, is_weed)
-    return status
+            hazard = (row.get("hazard") or "").strip()
+            if hazard:
+                hazards[_normalize(species)] = hazard
+    return status, hazards
+
+
+def _load_genus_nouns(names: dict[str, str]) -> dict[str, str]:
+    """Map genus -> group noun ("Quercus" -> "oak"), derived from its species'
+    common names. Requires agreement so mixed genera keep their Latin name."""
+    from collections import Counter, defaultdict
+
+    by_genus: dict[str, list[str]] = defaultdict(list)
+    for key, common in names.items():
+        genus = key.split()[0] if key else ""
+        last = common.strip().lower().split()
+        if genus and last:
+            by_genus[genus].append(last[-1])
+
+    nouns: dict[str, str] = {}
+    for genus, words in by_genus.items():
+        word, count = Counter(words).most_common(1)[0]
+        if len(words) == 1 or count / len(words) >= _GENUS_NOUN_MIN_AGREEMENT:
+            nouns[genus] = word
+    return nouns
 
 
 # Loaded once at import — never re-read per request.
 _COMMON_NAMES: dict[str, str] = _load_common_names()
-_STATUS: dict[str, tuple[str, bool]] = _load_status()
+_STATUS, _HAZARDS = _load_status()
+_GENUS_NOUNS: dict[str, str] = _load_genus_nouns(_COMMON_NAMES)
+
+
+def genus_label(genus: str) -> str:
+    """Human-facing name for a genus: its group noun when the species agree on
+    one ("oak"), otherwise the scientific name itself."""
+    if not genus:
+        return ""
+    return _GENUS_NOUNS.get(_normalize(genus), genus)
 
 
 def annotate(species: str) -> Annotation:
@@ -96,12 +137,14 @@ def annotate(species: str) -> Annotation:
     the honest default annotation instead of raising.
     """
     if not species:
-        return {"common_name": None, "status": "unknown", "is_weed": False}
+        return {"common_name": None, "status": "unknown", "is_weed": False,
+                "hazard": None}
 
     key = _normalize(species)
     status, is_weed = _STATUS.get(key, ("unknown", False))
     common_name = _COMMON_NAMES.get(key) or None
-    return {"common_name": common_name, "status": status, "is_weed": is_weed}
+    return {"common_name": common_name, "status": status, "is_weed": is_weed,
+            "hazard": _HAZARDS.get(key)}
 
 
 # Small module-level stats, handy for debugging / health reporting.

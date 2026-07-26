@@ -32,6 +32,17 @@ class PlantModel:
         self.model.to(self.device).eval()
         self.tf = timm.data.create_transform(**ck["data_config"], is_training=False)
 
+        # Genus grouping, for the genus fallback. Two independent evaluations
+        # (reports/tree_benchmark.md, reports/field_comparison_picturethis.md)
+        # found the model's genus signal far stronger than its species signal —
+        # "an oak" is a useful answer where a confident wrong oak is a harmful
+        # one. P(genus) is the sum of its species' probabilities, so we build an
+        # index once and scatter-add at inference.
+        self.genera = sorted({c.split()[0] for c in self.classes})
+        genus_pos = {g: i for i, g in enumerate(self.genera)}
+        self._genus_index = torch.tensor(
+            [genus_pos[c.split()[0]] for c in self.classes], dtype=torch.long)
+
         # Optional calibration temperature fit on held-out data.
         self.temperature = 1.0
         ckpt_dir = os.path.dirname(os.path.abspath(ckpt_path))
@@ -92,13 +103,14 @@ class PlantModel:
         top = probs.topk(min(k, len(self.classes)))
         cands = [{"species": self.classes[i], "prob": float(p)}
                  for p, i in zip(top.values.cpu(), top.indices.cpu())]
+        genus, genus_prob = self._top_genus(probs)
         out_of_scope, ood_score = False, None
         if self.ood is not None:
             feats = self.model.forward_head(fmap, pre_logits=True)[0].float().cpu()
             ood_score = self._ood_score(feats)
             out_of_scope = ood_score > self.ood["threshold"]
-        return {"candidates": cands, "out_of_scope": out_of_scope,
-                "ood_score": ood_score}
+        return {"candidates": cands, "genus": genus, "genus_prob": genus_prob,
+                "out_of_scope": out_of_scope, "ood_score": ood_score}
 
     @torch.no_grad()
     def predict(self, pil_image, k=5):
@@ -108,3 +120,12 @@ class PlantModel:
         top = probs.topk(min(k, len(self.classes)))
         return [{"species": self.classes[i], "prob": float(p)}
                 for p, i in zip(top.values.cpu(), top.indices.cpu())]
+
+    def _top_genus(self, probs):
+        """Most likely genus and its probability — the SUM over that genus's
+        species, which is why it can be far more confident than any single
+        species when the model is torn between congeners."""
+        totals = torch.zeros(len(self.genera))
+        totals.index_add_(0, self._genus_index, probs.cpu())
+        idx = int(totals.argmax())
+        return self.genera[idx], float(totals[idx])

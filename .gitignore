@@ -9,7 +9,15 @@ data/*
 !data/common_names.csv
 !data/ornamental_species.csv
 models/
-reports/
+# Reports: keep the written findings and their small result tables in git — they
+# are the record of what was measured. Note the trailing '*': a bare 'reports/'
+# is a directory-level ignore and git will not look inside it, so the '!' lines
+# below would never take effect.
+reports/*
+!reports/*.md
+!reports/calibration.json
+!reports/tree_benchmark.json
+!reports/field_comparison_pairs.csv
 runs/
 *.pt
 *.pth

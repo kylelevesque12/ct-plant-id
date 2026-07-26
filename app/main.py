@@ -35,10 +35,14 @@ from ctplantid.predict import PlantModel  # noqa: E402
 # agent. Guard the import so the API runs even before it exists — every
 # candidate then falls back to an honest "unknown".
 try:
-    from app.attributes import annotate
+    from app.attributes import annotate, genus_label
 except Exception:  # module missing or not yet importable
     def annotate(species):
-        return {"common_name": None, "status": "unknown", "is_weed": False}
+        return {"common_name": None, "status": "unknown", "is_weed": False,
+                "hazard": None}
+
+    def genus_label(genus):
+        return genus or ""
 
 STATIC_DIR = ROOT / "app" / "static"
 # Workstream B model: 2,510 classes = CT wild flora + ~150 cultivated ornamentals
@@ -60,6 +64,15 @@ NOT_SURE_THRESHOLD = 0.40
 # Qualitative label for the calibrated top-1 probability. Because the number now
 # IS the estimated chance of being correct, the bands read literally:
 #   >=0.80 very likely right, 0.60-0.80 probably, 0.40-0.60 leading-but-check.
+# Genus fallback. Two evaluations (reports/tree_benchmark.md,
+# reports/field_comparison_picturethis.md) found the genus signal much stronger
+# than the species signal — genus agreement stayed at 74% where species fell to
+# 47%. So when the species is a coin-flip but the genus isn't, lead with the
+# genus: "an oak" is useful where a confident wrong oak is harmful.
+GENUS_LEAD_MIN_PROB = 0.60      # genus must be at least this likely
+GENUS_LEAD_MAX_SPECIES = 0.60   # ...and the species below "Likely match"
+
+
 def confidence_label(prob: float) -> str:
     if prob >= 0.80:
         return "Strong match"
@@ -97,6 +110,7 @@ class Candidate(BaseModel):
     prob: float
     status: str
     is_weed: bool
+    hazard: str | None = None  # e.g. "Causes an itchy rash on contact"
 
 
 class IdentifyResponse(BaseModel):
@@ -105,6 +119,10 @@ class IdentifyResponse(BaseModel):
     confidence_label: str  # qualitative, honest label for the top match
     show_status: bool      # gate the native/invasive/weed flag on confidence
     out_of_scope: bool     # OOD: input is far from every trained class (garden/non-plant)
+    genus: str             # most likely genus
+    genus_label: str       # human-facing genus name ("oak")
+    genus_prob: float      # summed probability over that genus's species
+    lead_with_genus: bool  # species is uncertain but the genus isn't — show the genus
     candidates: list[Candidate]
 
 
@@ -174,6 +192,7 @@ async def identify(image: UploadFile = File(...)):
                 prob=p["prob"],
                 status=attrs.get("status", "unknown"),
                 is_weed=attrs.get("is_weed", False),
+                hazard=attrs.get("hazard"),
             )
         )
 
@@ -188,11 +207,22 @@ async def identify(image: UploadFile = File(...)):
     # CT species, a confident "Invasive weed" could get a real plant pulled — so we
     # hide it. Feature-distance OOD (out_of_scope) is the Workstream B upgrade that
     # catches the *confident* out-of-scope case the confidence gate alone can't.
+    genus = result.get("genus", "") or ""
+    genus_prob = float(result.get("genus_prob", 0.0) or 0.0)
+    lead_with_genus = (
+        not out_of_scope
+        and genus_prob >= GENUS_LEAD_MIN_PROB
+        and top.prob < GENUS_LEAD_MAX_SPECIES
+    )
     return IdentifyResponse(
         top_species=top.species,
         not_sure=top.prob < NOT_SURE_THRESHOLD,
         confidence_label=label,
         show_status=(label in ("Strong match", "Likely match")) and not out_of_scope,
         out_of_scope=out_of_scope,
+        genus=genus,
+        genus_label=genus_label(genus),
+        genus_prob=genus_prob,
+        lead_with_genus=lead_with_genus,
         candidates=candidates,
     )
