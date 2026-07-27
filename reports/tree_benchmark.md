@@ -88,6 +88,23 @@ spans, availability in Connecticut doesn't predict per-species accuracy.**
 Whether *raising the cap* would help — more images per species for confusable
 genera — is untested and remains a live option.
 
+**UPDATE (2026-07-26) — superseded by a direct measurement.**
+`reports/stratified_eval.json` scored accuracy against *actual training-image
+counts* rather than CT observation counts, and the relationship is strong and
+monotonic:
+
+| train images/class | top-1 | genus | mean confidence |
+|---|---|---|---|
+| < 20 (sparse) | **39.7%** | 67.9% | 66.2% |
+| 20–99 (tail) | **69.4%** | 84.6% | 79.5% |
+| 100+ (capped) | **85.4%** | 91.4% | 88.2% |
+
+So **data volume per class clearly does predict accuracy.** The null result above
+was an artefact of using CT observation count — a variable the 300-image cap had
+already flattened. Corrected conclusion: more images per class helps materially
+up to the cap; whether it keeps helping *beyond* 300 is still untested, because
+no class in this dataset exceeds it.
+
 ## Methodology caveats (state these with any citation of the numbers)
 
 - **Different photos.** Ours are crowd-sourced iNaturalist test-split images;
