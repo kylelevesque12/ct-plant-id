@@ -41,7 +41,17 @@ def stream_taxa():
 
 
 def main():
-    rows = list(csv.DictReader(open(MANIFEST)))
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--manifest", default=MANIFEST,
+                    help="manifest to filter (default: data/manifest.csv)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="report what would be dropped without writing")
+    args = ap.parse_args()
+    manifest = args.manifest
+    backup = manifest + ".prefilter.bak"
+
+    rows = list(csv.DictReader(open(manifest)))
     wanted = {r["taxon_id"] for r in rows if r["taxon_id"]}
     print(f"manifest: {len(rows):,} images, {len({r['species'] for r in rows}):,} species")
 
@@ -71,12 +81,13 @@ def main():
             dropped_species.add(r["species"])
             dropped_by_phylum[ph] += 1
 
-    if not os.path.exists(BACKUP):
-        shutil.copy(MANIFEST, BACKUP)
-    with open(MANIFEST, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=rows[0].keys())
-        w.writeheader()
-        w.writerows(kept)
+    if not args.dry_run:
+        if not os.path.exists(backup):
+            shutil.copy(manifest, backup)
+        with open(manifest, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=rows[0].keys())
+            w.writeheader()
+            w.writerows(kept)
 
     kept_species = {r["species"] for r in kept}
     splits = Counter(r["split"] for r in kept)
@@ -89,7 +100,10 @@ def main():
     print(f"  species: {len(kept_species):,}")
     print(f"  splits:  train {splits['train']:,}  val {splits['val']:,}  "
           f"test {splits['test']:,}")
-    print(f"\nfull manifest backed up to {os.path.relpath(BACKUP, ROOT)}")
+    if args.dry_run:
+        print("\ndry run — nothing written")
+    else:
+        print(f"\npre-filter manifest backed up to {backup}")
 
 
 if __name__ == "__main__":

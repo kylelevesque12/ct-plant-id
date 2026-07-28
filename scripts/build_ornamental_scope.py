@@ -27,58 +27,97 @@ CT_PLACE_ID = 49
 HEADERS = {"User-Agent": "ct-plant-id/0.1 (ornamental scope build)"}
 CKPT = os.path.join(ROOT, "runs", "stage2", "model.pt")
 OUT = os.path.join(ROOT, "data", "ornamental_species.csv")
-TARGET = 150  # cap on how many ornamentals to add
+TARGET = 150  # default cap on how many ornamentals to add (--target overrides)
 
 
-def existing_classes():
-    ck = torch.load(CKPT, map_location="cpu", weights_only=False)
-    return set(ck["classes"])
+def existing_classes(manifest=None):
+    """Species already in scope, so the ornamental list only adds new ones.
+
+    Prefers an explicit manifest (the round-2 build is the current truth about
+    what's covered); otherwise falls back to whichever trained checkpoint exists.
+    """
+    if manifest:
+        with open(manifest, newline="") as f:
+            return {r["species"] for r in csv.DictReader(f)}
+    for path in (os.path.join(ROOT, "runs", "b_stage2", "model.pt"), CKPT):
+        if os.path.exists(path):
+            ck = torch.load(path, map_location="cpu", weights_only=False)
+            return set(ck["classes"])
+    raise SystemExit("no manifest or checkpoint found — pass --exclude-manifest")
 
 
 def main():
-    have = existing_classes()
-    print(f"model already covers {len(have)} species; finding CT-cultivated ones it lacks…")
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--target", type=int, default=TARGET,
+                    help="how many ornamental species to keep")
+    ap.add_argument("--out", default=OUT)
+    ap.add_argument("--place-id", default=str(CT_PLACE_ID),
+                    help="iNat place to rank by. CT (49) is a small sample — by "
+                         "rank ~150 counts fall to single digits, which is noise. "
+                         "A larger place (US = 1) ranks on far more data and "
+                         "surfaces genuine landscape plants before houseplants.")
+    ap.add_argument("--min-obs", type=int, default=0,
+                    help="skip species below this observation count")
+    ap.add_argument("--exclude-manifest", default=None,
+                    help="manifest whose species are already covered "
+                         "(e.g. /root/round2/manifest.csv)")
+    args = ap.parse_args()
+    target = args.target
 
-    rows, page = [], 1
-    while len(rows) < TARGET * 3 and page <= 10:
-        r = requests.get(API, headers=HEADERS, timeout=60, params={
-            "place_id": CT_PLACE_ID, "captive": "true", "iconic_taxa": "Plantae",
-            "per_page": 200, "page": page,
-        })
-        r.raise_for_status()
-        results = r.json()["results"]
-        if not results:
-            break
-        for it in results:
-            tx = it.get("taxon") or {}
-            if tx.get("rank") != "species":
-                continue
-            name = tx.get("name")
-            if not name or name in have:
-                continue
-            rows.append({
-                "taxon_id": tx["id"],
-                "species": name,
-                "common_name": tx.get("preferred_common_name", ""),
-                "ct_cultivated_obs": it["count"],
+    have = existing_classes(args.exclude_manifest)
+    print(f"{len(have)} species already covered; finding CT-cultivated ones missing…")
+
+    places = [int(p) for p in str(args.place_id).split(",") if p.strip()]
+    print(f"ranking by cultivated observations pooled over places {places}")
+
+    # Pool counts across places. CT alone is too small a sample to rank on (by
+    # rank ~150 the counts are single digits); pooling climate-similar states
+    # gives a stable ordering without importing Florida/Arizona plants the way
+    # a US-wide query does.
+    pooled = {}
+    for place in places:
+        page = 1
+        while page <= 20:
+            r = requests.get(API, headers=HEADERS, timeout=60, params={
+                "place_id": place, "captive": "true", "iconic_taxa": "Plantae",
+                "per_page": 200, "page": page,
             })
-        page += 1
-        time.sleep(1)
+            r.raise_for_status()
+            results = r.json()["results"]
+            if not results:
+                break
+            for it in results:
+                tx = it.get("taxon") or {}
+                if tx.get("rank") != "species":
+                    continue
+                name = tx.get("name")
+                if not name or name in have:
+                    continue
+                e = pooled.setdefault(tx["id"], {
+                    "taxon_id": tx["id"], "species": name,
+                    "common_name": tx.get("preferred_common_name", ""),
+                    "cultivated_obs": 0})
+                e["cultivated_obs"] += it["count"]
+            page += 1
+            time.sleep(1)
 
-    rows.sort(key=lambda x: -x["ct_cultivated_obs"])
-    rows = rows[:TARGET]
+    rows = [e for e in pooled.values() if e["cultivated_obs"] >= args.min_obs]
+
+    rows.sort(key=lambda x: -x["cultivated_obs"])
+    rows = rows[:target]
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w", newline="") as f:
+    with open(args.out, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["taxon_id", "species", "common_name",
-                                          "ct_cultivated_obs"])
+                                          "cultivated_obs"])
         w.writeheader()
         w.writerows(rows)
 
-    print(f"\nwrote {len(rows)} ornamental candidates -> {os.path.relpath(OUT, ROOT)}")
-    print(f"\ntop 25 CT-cultivated species not yet in scope:")
+    print(f"\nwrote {len(rows)} ornamental candidates -> {os.path.relpath(args.out, ROOT)}")
+    print(f"\ntop 25 cultivated species not yet in scope (places {args.place_id}):")
     for r in rows[:25]:
-        print(f"  {r['ct_cultivated_obs']:>5}  {r['species']:<34} {r['common_name']}")
+        print(f"  {r['cultivated_obs']:>5}  {r['species']:<34} {r['common_name']}")
 
 
 if __name__ == "__main__":

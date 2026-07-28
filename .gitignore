@@ -18,6 +18,9 @@ reports/*
 !reports/calibration.json
 !reports/tree_benchmark.json
 !reports/field_comparison_pairs.csv
+# Interpretability figures are the point of the write-up — keep them.
+!reports/figures/
+!reports/figures/*.png
 runs/
 *.pt
 *.pth

@@ -88,10 +88,15 @@ def stream_tsv(name, max_rows=0):
             yield row
 
 
-def load_ct_taxa():
+def load_ct_taxa(path=None):
+    """taxon_id -> species name. Accepts either the CT checklist (column `name`)
+    or the ornamental scope file (column `species`), so the same builder can pull
+    wild flora and cultivated ornamentals."""
     taxa = {}
-    for row in csv.DictReader(open(CHECKLIST)):
-        taxa[str(row["taxon_id"])] = row["name"]
+    for row in csv.DictReader(open(path or CHECKLIST)):
+        name = row.get("name") or row.get("species")
+        if name:
+            taxa[str(row["taxon_id"])] = name
     return taxa
 
 
@@ -109,16 +114,24 @@ def check_disk(out_dir, need_gb):
             f"resize, point --out elsewhere, or lower --photos-per-obs.")
 
 
-def select_observations(ct_taxa, cap, cap_confusable, max_scan):
-    """Pass 1: observation_uuid -> taxon_id for research-grade CT observations,
-    capped per taxon with headroom for observations whose photos fail."""
+def select_observations(ct_taxa, cap, cap_confusable, max_scan, quality="research"):
+    """Pass 1: observation_uuid -> taxon_id, capped per taxon with headroom for
+    observations whose photos fail.
+
+    `quality`: "research" for wild flora (the v1 rule), or "any" for cultivated
+    ornamentals — iNaturalist marks planted specimens **casual**, which is
+    exactly why research-grade excludes garden plants and why the hydrangea was
+    missing from v1 scope.
+    """
     selected, per_taxon = {}, {}
     for i, row in enumerate(stream_tsv("observations.csv.gz", max_scan)):
         if i and i % 5_000_000 == 0:
             print(f"  obs scanned {i:,}, selected {len(selected):,}")
         tid = row["taxon_id"]
         name = ct_taxa.get(tid)
-        if name is None or row["quality_grade"] != "research":
+        if name is None:
+            continue
+        if quality == "research" and row["quality_grade"] != "research":
             continue
         limit = cap_for(name, cap, cap_confusable) * 2
         if per_taxon.get(tid, 0) < limit:
@@ -224,18 +237,26 @@ def main():
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--need-gb", type=int, default=140, help="required free disk")
     ap.add_argument("--max-scan", type=int, default=0, help="row cap for smoke tests")
+    ap.add_argument("--taxa-csv", default=None,
+                    help="species list (default: CT checklist). Point at "
+                         "data/ornamental_species.csv for the cultivated pull.")
+    ap.add_argument("--quality-grade", choices=["research", "any"], default="research",
+                    help="'any' includes casual/needs_id — required for cultivated "
+                         "ornamentals, which iNaturalist marks casual")
     args = ap.parse_args()
 
     img_dir = os.path.join(args.out, "images")
     manifest = os.path.join(args.out, "manifest.csv")
     check_disk(args.out, args.need_gb)
 
-    ct_taxa = load_ct_taxa()
-    print(f"{len(ct_taxa):,} CT taxa | cap {args.cap} "
-          f"(confusable {args.cap_confusable}) | up to {args.photos_per_obs} photos/obs")
+    ct_taxa = load_ct_taxa(args.taxa_csv)
+    print(f"{len(ct_taxa):,} taxa | cap {args.cap} "
+          f"(confusable {args.cap_confusable}) | up to {args.photos_per_obs} photos/obs "
+          f"| quality: {args.quality_grade}")
 
     print("\npass 1: streaming observations.csv.gz (~12 GB)…")
-    obs = select_observations(ct_taxa, args.cap, args.cap_confusable, args.max_scan)
+    obs = select_observations(ct_taxa, args.cap, args.cap_confusable, args.max_scan,
+                              args.quality_grade)
     print(f"  selected {len(obs):,} observations")
 
     print("\npass 2: streaming photos.csv.gz (~18 GB)…")
