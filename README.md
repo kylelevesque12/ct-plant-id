@@ -3,10 +3,10 @@
 **Live: [fieldnote.kylelevesque.me](https://fieldnote.kylelevesque.me)**
 
 Point your phone at a plant. Fieldnote names the species, tells you whether it's
-native, introduced, invasive, or a garden plant — and tells you when it isn't
+native, introduced, invasive, or a garden plant, and tells you when it isn't
 sure.
 
-It covers **2,510 Connecticut species**, trained on **538k photos**, and runs as
+It covers **2,510 Connecticut species** (with a focus on wild/garden plants), trained on **538k photos**, and runs as
 an installable web app on a $12/month server.
 
 ![The app on a phone](reports/figures/app_screens.png)
@@ -23,21 +23,22 @@ an installable web app on a $12/month server.
 | **App** | FastAPI backend + vanilla-JS PWA — camera capture, ranked candidates, offline-capable, installs to the home screen |
 | **Deploy** | systemd + Caddy on a DigitalOcean droplet, automatic HTTPS, ~0.1s per identification on CPU |
 
-The model predicts **species only**. Whether something is a weed is a *lookup*,
-not a visual class — "weed" depends on where you're standing, so it lives in a
-separate attributes table keyed by species.
+The model predicts **species only**. It uses a *lookup* table to classify each plant as a weed. It's worth double checking the class,
+as the classification of a weed can be subjective. One person might consider a plant a weed that another one doesn't. The *lookup* classifies
+a plant as a weed only if it's commonly referred to as a weed. 
 
 ---
 
-## The parts I'm actually proud of
+## Model Insights
 
-Most of the interesting work wasn't the accuracy number. It was figuring out
-what the model was doing when it got things wrong.
+The development of the model took several iterations and refinements. In particular, for each model I trained, I was most 
+interested in figuring out what the model was doing when it got things wrong, recognizing its limitations, and then making
+adjustments to improve its performance for the next iteration.
 
 ### 1. A confident wrong answer, and the picture that explained it
 
 The first real field test was a hydrangea in my mom's garden. Three photos from
-three angles gave three different confident wrong species — and one of them came
+three angles gave three different confident wrong species, and one of them came
 back flagged as an invasive weed at 78%. That's the worst possible failure:
 confidently wrong about something with consequences.
 
@@ -45,15 +46,14 @@ The cause turned out to be scope. iNaturalist's research-grade data deliberately
 excludes cultivated plants, so **hydrangeas were not in the model's vocabulary at
 all.** It was forced to pick a nearest neighbour among 2,360 wild species.
 
-I retrained with 150 common garden ornamentals added, then used **Grad-CAM** — a
-heatmap of which pixels drove the prediction — to compare the old model to the
+I retrained with 150 common garden ornamentals added, then used **Grad-CAM** (a
+heatmap of which pixels drove the prediction) to compare the old model to the
 new one on the exact same photos:
 
 ![Grad-CAM, old model vs new](reports/figures/gradcam_hydrangea_old_vs_new.png)
 
-Both models look at the **same thing**: leaf margins, serrations, venation — the
-features a botanist would use. The old model was never failing to *see* the
-plant. It saw the right evidence and had nowhere to put it, so it landed on mint,
+Both models look at the **same thing**: leaf margins, serrations, venation (features a botanist would use). 
+The old model was never failing to *see* the plant. It saw the right evidence and had nowhere to put it, so it landed on mint,
 then mock-orange, then bush-honeysuckle.
 
 **So the fix was a vocabulary problem, not a perception problem.** That's a much
